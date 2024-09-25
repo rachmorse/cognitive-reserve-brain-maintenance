@@ -1,0 +1,11 @@
+# Ignore everything
+*
+
+# Do not ignore .gitignore file
+!.gitignore
+
+# Do not ignore Python scripts 
+!*.ipynb
+
+# Except for this script
+cleaning BBHI data.ipynb
