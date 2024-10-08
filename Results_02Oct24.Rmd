@@ -1,0 +1,697 @@
+---
+title: "Results"
+output:
+  html_document:
+    df_print: paged
+  word_document: default
+---
+
+```{r setup, include=FALSE}
+if (!require("ggplot2")) {install.packages("ggplot2"); require("ggplot2")}
+if (!require("dplyr")) {install.packages("dplyr"); require("dplyr")}
+if (!require("psych")) {install.packages("psych"); require("psych")}
+if (!require("stringr")) {install.packages("stringr"); require("stringr")}
+if (!require("tidyr")) {install.packages("tidyr"); require("tidyr")}
+if (!require("kableExtra")) {install.packages("kableExtra"); require("kableExtra")}
+if (!require("knitr")) {install.packages("knitr"); require("knitr")}
+if (!require("broom")) {install.packages("broom"); require("broom")}
+if (!require("scales")) {install.packages("scales"); require("scales")}
+if (!require("scatterplot3d")) {install.packages("scatterplot3d"); require("scatterplot3d")}
+if (!require("pdp")) {install.packages("pdp"); require("pdp")}
+if (!require("mgcv")) {install.packages("mgcv"); require("mgcv")}
+if (!require("patchwork")) {install.packages("patchwork"); require("patchwork")}
+if (!require("cowplot")) {install.packages("cowplot"); library("cowplot")}
+
+
+library(readr)
+library(readxl)
+library(ggsignif)
+```
+
+```{r echo=FALSE, warning=FALSE}
+
+clean_data <- read.csv("/tsd/p274/data/durable/projects/p027-cr_bm/Clean Data All Cohorts/Wide Format/Analysed data.csv")
+
+p_value_df <- read.csv("/tsd/p274/data/durable/projects/p027-cr_bm/p_value.csv")
+
+# Change the p-values to none scientific format
+p_value_df$adjusted_p_value <- as.numeric(format(p_value_df$adjusted_p_value, scientific = FALSE))
+
+```
+
+```{r echo=FALSE}
+participants <- clean_data %>% nrow()
+female <- (clean_data %>% filter(sex == "female") %>% nrow())
+female_percentage <- (female / participants)*100
+mean_age <- mean(clean_data$age_baseline, na.rm = TRUE)
+sd_age <- sd(clean_data$age_baseline, na.rm = TRUE)
+
+# Create a new variable to represent average follow-up time 
+clean_data <- clean_data%>%
+  mutate(FU_time = rowMeans(select(., mem_time, hc_time, fc_time), na.rm = TRUE))
+
+mean_fu <- mean(clean_data$FU_time, na.rm = TRUE)
+sd_fu <- sd(clean_data$FU_time, na.rm = TRUE)
+```
+
+We included `r participants` participants: `r round(female_percentage, 2)`% female with a mean baseline age of `r round(mean_age, 2)` years (SD = `r round(sd_age, 2)`) and a mean follow-up time of `r round(mean_fu, 2)` years (SD = `r round(sd_fu, 2)`). The descriptive statistics are summarized by cohort in Table 3.
+
+```{r echo=FALSE}
+
+# Create a new variable to represent average number of follow-ups 
+clean_data <- clean_data%>%
+  mutate(FU_obs = rowMeans(select(., em_obs, hc_obs, fc_obs), na.rm = TRUE))
+
+summary_stats <- clean_data %>% 
+  rename(
+    Study = "cohort"
+  )
+
+summary_stats <- summary_stats%>%
+  dplyr::group_by(Study)%>%
+  dplyr::summarise(
+    `**Participants**` = n_distinct(id),
+    `**Baseline age (range)**` = paste0(round(mean(age_baseline, na.rm=T), digits=1), 
+                                    " (", paste0(round(range(age_baseline, na.rm=T)), 
+                                                 collapse="-"),
+                                    ")"),
+    `**Sex (% F / % M)**` = paste0(c(round(mean(sex=="female", na.rm=T)*100), 
+                                 round(mean(sex=="male", na.rm=T)*100)), 
+                               collapse="/"),
+    `**Education (range)**` = paste0(round(mean(edu, na.rm=T), digits=1), 
+                                 " (", paste0(round(range(edu, na.rm=T)), 
+                                              collapse="-"), 
+                                 ")"),
+    `**MMSE (range)**` = paste0(round(mean(mmse, na.rm=T), digits=1), 
+                            " (", paste0(round(range(mmse, na.rm=T)), 
+                                         collapse="-"), 
+                            ")"),
+    `**Mean follow-up time (range)**`= paste0(round(mean(FU_time, na.rm=T), digits=1), 
+                                          " (", paste0(round(range(FU_time, na.rm=T)), 
+                                                       collapse="-"), 
+                                          ")"),
+    `**Mean follow-up observations (range)**` = paste0(round(mean(FU_obs, na.rm = TRUE), digits = 1), 
+                                                   " (", 
+                                                   "2", 
+                                                   "-", 
+                                                   round(max(FU_obs, na.rm = TRUE)), 
+                                                   ")"))
+
+# Create a data frame for the total line
+total_line <- tibble::tibble(
+ `Study` = "Total",
+ `**Participants**` = n_distinct(clean_data$id),
+    `**Baseline age (range)**` = paste0(round(mean(clean_data$age_baseline, na.rm=T), digits=1), 
+                                    " (", paste0(round(range(clean_data$age_baseline, na.rm=T)), 
+                                                 collapse="-"), 
+                                    ")"),
+    `**Sex (% F / % M)**` = paste0(c(round(mean(clean_data$sex=="female", na.rm=T)*100), 
+                                 round(mean(clean_data$sex=="male", na.rm=T)*100)), 
+                               collapse="/"),
+    `**Education (range)**` = paste0(round(mean(clean_data$edu, na.rm=T), digits=1),
+                                 " (", paste0(round(range(clean_data$edu, na.rm=T)), 
+                                              collapse="-"),
+                                 ")"),
+    `**MMSE (range)**` = paste0(round(mean(clean_data$mmse, na.rm=T), digits=1),
+                            " (", paste0(round(range(clean_data$mmse, na.rm=T)), 
+                                         collapse="-"),
+                            ")"),
+    `**Mean follow-up time (range)**`= paste0(round(mean(clean_data$FU_time, na.rm=T), digits=1),
+                                          " (", paste0(round(range(clean_data$FU_time, na.rm=T)), 
+                                                       collapse="-"),
+                                          ")"),
+    `**Mean follow-up observations (range)**` = paste0(round(mean(clean_data$FU_obs, na.rm = TRUE), digits = 1), 
+                                                   " (", 
+                                                   "2", 
+                                                   "-", 
+                                                   round(max(clean_data$FU_obs, na.rm = TRUE)), 
+                                                   ")")
+)
+
+# Bind the total line data frame to the summary statistics table
+summary_stats <- bind_rows(summary_stats, total_line)
+
+```
+
+__Table 3__: _Demographic characteristics_
+```{r tab3, echo=FALSE}
+knitr::kable(summary_stats, align = 'c')
+```
+
+<small>_Note._ Abbreviations: MMSE Mini Mental State Examination, F female, M male, CI Confidence Interval</small>
+
+At least two cohorts varied significantly on each of the variables. All cohorts had significantly higher MMSE scores than the Betula cohort, and Cobra had significantly higher scores than Oslo. The WAHA and Oslo cohorts were significantly older at baseline than the Betula and Cobra cohorts. All cohorts varied significantly in education except Betula and Cobra.
+
+__Memory and HC change:__ 
+```{r echo=FALSE}
+
+# Helper function to format p-values
+format_p_value <- function(p) {
+  if (p < 0.001) {
+    return("<0.001") # Written like this because of HTML formatting
+  } else {
+    return(round(p, 3))
+  }
+}
+
+# Helper function to perform regression and extract required statistics
+get_regression_stats <- function(formula, data, vars_priority) {
+  model <- lm(formula, data = data)
+  summary_model <- summary(model)
+  coefficients <- summary_model$coefficients
+  
+  # Initialize the variable index
+  variable_index <- NULL
+  
+  # Check for each variable in priority order and break on the first match
+  for (var in vars_priority) {
+    if (var %in% rownames(coefficients)) {
+      variable_index <- which(rownames(coefficients) == var)
+      break
+    }
+  }
+
+  # Check if a relevant variable was found
+  if (is.null(variable_index)) {
+    stop("None of the priority variables are in the model.")
+  }
+
+  coef <- coefficients[variable_index, 1]
+  ci <- confint(model)[variable_index, ]
+  p_value <- coefficients[variable_index, 4]
+  # p_value <- format_p_value(coefficients[variable_index, 4])
+  adj_r2 <- summary_model$adj.r.squared
+  r2 <- summary_model$r.squared
+
+  return(list(coef = coef, ci = ci, p_value = p_value, adj_r2 = adj_r2, r2 = r2))
+}
+
+# Set a list of priority variables 
+hc_vars <- c(
+  "scale(hc_slopes)",
+  "hc_slopes",
+  "scale(adj_HIP_total_baseline)",
+  "scale(adj_HIP_total_followup)"
+)
+
+edu_var <- c(
+  "scale(edu)"
+)
+
+# Running the regression model
+emhp_merged <- get_regression_stats(scale(memory_slopes) ~ scale(hc_slopes) + study + scale(age_baseline) + scale(mem_time) + sex + scale(edu), data = clean_data, hc_vars)
+emhp_merged_unscaled <- get_regression_stats(memory_slopes ~ hc_slopes + study + age_baseline + mem_time + sex + edu, data = clean_data, hc_vars)
+
+# Cross-sectional analysis at baseline
+model_baseline <- get_regression_stats(scale(memory_baseline) ~ scale(adj_HIP_total_baseline) + study + scale(age_baseline) + scale(edu) + sex, data = clean_data, hc_vars)
+
+# Cross-sectional analysis at follow-up
+model_followup <- get_regression_stats(scale(memory_followup) ~ scale(adj_HIP_total_followup) + study + scale(age_followup) + scale(edu), data = clean_data, hc_vars)
+
+# Education as covariate between hippocampal volume and memory
+edu_baseline <- get_regression_stats(scale(memory_baseline) ~ study + scale(age_baseline) + scale(edu) + sex, data = clean_data, edu_var)
+edu_followup <- get_regression_stats(scale(memory_followup) ~ study + scale(age_followup) + scale(edu), data = clean_data, edu_var)
+edu_long <- get_regression_stats(scale(memory_slopes) ~ study + scale(age_baseline) + scale(mem_time) + sex + scale(edu), data = clean_data, edu_var)
+
+```
+
+Hippocampus annual change and memory annual change were significantly correlated (β = `r round(emhp_merged$coef, 3)`, _p_ = `r format_p_value(emhp_merged$p_value)`, _p_<sub>FDR</sub> = `r format_p_value(p_value_df[p_value_df$model_name == "emhp_merged", "adjusted_p_value"])`, r² = `r round(emhp_merged$r2, 3)`) (Figure 1). Cross-sectionally, hippocampal volume and memory were not significantly correlated at baseline (_p_ = `r format_p_value(model_baseline$p_value)`, _p_<sub>FDR</sub> = `r format_p_value(p_value_df[p_value_df$model_name == "model_baseline", "adjusted_p_value"])`) but were significantly correlated at follow-up (β = `r round(model_followup$coef, 3)`, _p_ = `r format_p_value(model_followup$p_value)`, _p_<sub>FDR</sub> = `r format_p_value(p_value_df[p_value_df$model_name == "model_followup", "adjusted_p_value"])`, r² = `r round(model_followup$r2, 3)`). Education was only a significant covariate between hippocampal volume and memory cross-sectionally at baseline (β = `r round(edu_baseline$coef, 3)`, _p_ = `r format_p_value(edu_baseline$p_value)`, _p_<sub>FDR</sub> = `r format_p_value(p_value_df[p_value_df$model_name == "edu_baseline", "adjusted_p_value"])`) and at follow-up (β = `r round(edu_followup$coef, 3)`, _p_ = `r format(format_p_value(edu_followup$p_value), scientific = FALSE)`, _p_<sub>FDR</sub> = `r format_p_value(p_value_df[p_value_df$model_name == "edu_followup", "adjusted_p_value"])`) but not longitudinally (_p_ = `r format(format_p_value(edu_long$p_value), scientific = FALSE)`, _p_<sub>FDR</sub> = `r format_p_value(p_value_df[p_value_df$model_name == "edu_long", "adjusted_p_value"])`). All results are summarized in Table 4. 
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+# Plot without colors by cohort
+mem_hc_plot <- ggplot(clean_data, aes(y = res_mem_slopes, x = res_hc_slopes)) +
+  geom_point() +
+  geom_smooth(method = "lm", 
+                color = "#86B6F6", 
+                fill = "#B4D4FF") +
+  labs(y = "Memory Annual Change", 
+       x = "Hippocampal Annual Change", 
+       title = "Hippocampal Annual Change vs Memory Annual Change") +
+  theme_minimal(  ) +
+  theme(
+    legend.position = "right",
+    plot.background = element_rect(fill = "white", color = "white"),   # Set background to white
+    plot.margin = margin(t = 0.35, r = 0.35, b = 0.35, l = 0.35, unit = "cm"),
+    axis.text.x = element_text(margin = margin(t = -5)),
+    plot.title = element_text(hjust = 0.5)
+  )
+
+```
+
+__Figure 1:__ _Memory Annual Change vs Hippocampal Annual Change_
+```{r fig1, echo=FALSE, dpi = 400, fig.width=6, fig.height=4, message=FALSE, warning=FALSE}
+
+mem_hc_plot
+
+```
+
+The association between memory annual change and hippocampus annual change, controlled for cohort/MRI scanner, with a linear model with a coefficient of `r format(round(emhp_merged_unscaled$coef, 4), scientific = FALSE)` (scaled: `r round(emhp_merged$coef, 4)`) and confidence intervals. 
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+# Create the table
+table_data_emhc <- data.frame(
+  " " = c("", "**Memory Annual Change**",
+          "", "", "**Memory Annual Change**"), 
+  "**Hippocampus Annual Change**" = c("_Coefficient (95% CI)_", 
+                                      paste0(round(emhp_merged$coef, 3), " (", round(emhp_merged$ci[1], 3), " to ", round(emhp_merged$ci[2], 3), ")"), 
+                                      "**Education Longitudinal**", "_Coefficient (95% CI)_",
+                                      paste0(round(edu_long$coef, 3), " (", round(edu_long$ci[1], 3), " to ", round(edu_long$ci[2], 3), ")")), 
+  " " = c("_Adjusted p-value_", format_p_value(p_value_df[p_value_df$model_name == "emhp_merged", "adjusted_p_value"]),
+          "", "_Adjusted p-value_", format_p_value(p_value_df[p_value_df$model_name == "edu_long", "adjusted_p_value"])), 
+  " " = c("_Adjusted R²_", round(emhp_merged$adj_r2, 3), 
+          "", "_Adjusted R²_", round(edu_long$adj_r2, 3)), 
+  "**Hippocampus Baseline**" = c("_Coefficient (95% CI)_", 
+                            paste0(round(model_baseline$coef, 3), " (", round(model_baseline$ci[1], 3), " to ", round(model_baseline$ci[2], 3), ")"), 
+                            "**Education Baseline**", "_Coefficient (95% CI)_",
+                            paste0(round(edu_baseline$coef, 3), " (", round(edu_baseline$ci[1], 3), " to ", round(edu_baseline$ci[2], 3), ")")), 
+  " " = c("_Adjusted p-value_", format_p_value(p_value_df[p_value_df$model_name == "model_baseline", "adjusted_p_value"]), 
+          "", "_Adjusted p-value_", format_p_value(p_value_df[p_value_df$model_name == "edu_baseline", "adjusted_p_value"])),
+  " " = c("_Adjusted R²_", round(model_baseline$adj_r2, 3), 
+          "", "_Adjusted R²_", round(edu_baseline$adj_r2, 3)),
+  "**Hippocampus Follow-up**" = c("_Coefficient (95% CI)_", 
+              paste0(round(model_followup$coef, 3), " (", round(model_followup$ci[1], 3), " to ", round(model_followup$ci[2], 3), ")"), 
+              "**Education Follow-up**", "_Coefficient (95% CI)_",
+              paste0(round(edu_followup$coef, 3), " (", round(edu_followup$ci[1], 3), " to ", round(edu_followup$ci[2], 3), ")")), 
+  " " = c("_Adjusted p-value_", format_p_value(p_value_df[p_value_df$model_name == "model_followup", "adjusted_p_value"]), 
+          "", "_Adjusted p-value_", format_p_value(p_value_df[p_value_df$model_name == "edu_followup", "adjusted_p_value"])),
+  " " = c("_Adjusted R²_", round(model_followup$adj_r2, 3), 
+          "", "_Adjusted R²_", round(edu_followup$adj_r2, 3)))
+             
+```
+
+__Table 4__: _Linear Regressions with Hippocampal Annual Change, Education, and Memory Annual Change_
+```{r tab4, echo=FALSE} 
+
+# Format and print the table
+kable(table_data_emhc, format = "markdown", col.names = c(" ", "**Hippocampus Annual Change**", " ", " ", "**Hippocampus Baseline**", " ", " ", "**Hippocampus Follow-up**", " ", " "))
+
+```
+Note. Models are adjusted for age, sex, education, follow-up time, and cohort/MRI scanner.
+
+```{r echo=FALSE}
+# Calculate mean and SD for CR and BM variables
+mean_cr <- mean(clean_data$reverse_cr, na.rm = TRUE)
+sd_cr <- sd(clean_data$reverse_cr, na.rm = TRUE)
+mean_bm <- mean(clean_data$reverse_bm, na.rm = TRUE)
+sd_bm <- sd(clean_data$reverse_bm, na.rm = TRUE)
+
+# Calculate the combined CR and BM value
+clean_data <- clean_data %>%
+  mutate(
+    total_cr_bm = reverse_cr + reverse_bm,
+    closer_to = ifelse(reverse_bm > reverse_cr, "BM", "CR"),
+    distance_from_midline = ifelse(closer_to == "BM", (reverse_bm / reverse_cr), (-(reverse_cr / reverse_bm)))
+    )
+
+mean_total_cr_bm <- mean(clean_data$total_cr_bm, na.rm = TRUE)
+sd_total_cr_bm <- sd(clean_data$total_cr_bm, na.rm = TRUE)
+mean_distance_midline <- mean(clean_data$distance_from_midline, na.rm = TRUE)
+sd_distance_midline <- sd(clean_data$distance_from_midline, na.rm = TRUE)
+
+# Classify participants into CR and BM pathways based on some criteria
+# (Replace with actual classification logic if different)
+cr_pathway <- clean_data %>% filter(closer_to == "CR") %>% nrow()
+bm_pathway <- clean_data %>% filter(closer_to == "BM") %>% nrow()
+total_participants <- nrow(clean_data)
+
+```
+__CR and BM Variables__
+
+We established CR (mean = `r round(mean_cr, 3)`, SD = `r round(sd_cr, 3)`) and BM (mean = `r round(mean_bm, 3)`, SD = `r round(sd_bm, 3)`) variables (Figure 2). 
+
+```{r echo=FALSE, warning=FALSE}
+
+custom_colors <- c("purple", "#6a4c93", "#4267ac", "#1982c4", "#52a675", "#8ac926", "#c5ca30", "#ffca3a", "#ff924c", "#ff595e")
+
+cr_plot <- ggplot(clean_data, aes(y = res_mem_slopes, x = res_hc_slopes, color = (reverse_cr))) +
+  geom_point(size = 2) +
+  scale_color_gradientn(
+    colors = custom_colors,
+    values = scales::rescale(c(-1, -0.77, -0.55, -0.33, -0.11, 0.11, 0.33, 0.55, 0.77, 1))
+  )+
+  geom_abline(slope = -(abs(max(clean_data$res_mem_slopes)))/(abs(min(clean_data$res_hc_slopes))), intercept = 0, color = "grey", size = 1) + 
+  geom_abline(slope = 0, intercept = 0, color = "grey", size = 1) + 
+  geom_abline(slope = 10000, intercept = 0, color = "grey", size = 1) +
+  labs(y = "Memory Annual Change",
+       x = "Hippocampus Annual Change",
+       color = "Cognitive Reserve") +
+  theme_minimal() +
+  theme(legend.position = "bottom") 
+
+bm_plot <- ggplot(clean_data, aes(y = res_mem_slopes, x = res_hc_slopes, color = reverse_bm)) +
+  geom_point(size = 2) +
+  scale_color_gradientn(
+    colors = custom_colors,
+    values = scales::rescale(c(-1, -0.77, -0.55, -0.33, -0.11, 0.11, 0.33, 0.55, 0.77, 1))
+)+
+  geom_abline(
+    slope = (abs(max(clean_data$res_mem_slopes)) / abs(min(clean_data$res_hc_slopes))),
+    intercept = 0,
+    color = "grey",
+    size = 1
+  ) +
+  geom_abline(slope = 0, intercept = 0, color = "grey", size = 1) +
+  geom_abline(slope = 10000, intercept = 0, color = "grey", size = 1) +
+  labs(
+    y = "Memory Annual Change",
+    x = "Hippocampus Annual Change",
+    color = "Brain Maintenance"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "bottom") 
+
+# Combine the plots into one figure
+combined_crbm <- bm_plot + cr_plot + plot_layout(ncol = 2)
+
+```
+
+__Figure 2:__ _Brain Maintenance and Cognitive Reserve Plots_
+
+```{r fig2, echo=FALSE, dpi = 400, fig.width=7, fig.height=4, message=FALSE, warning=FALSE}
+
+combined_crbm
+
+```
+
+<small>(A) The association between hippocampus annual change and memory annual change, adjusted for cohort/MRI scanner, depicted with a diagonal line representing the brain maintenance line. The color code represents the level of brain maintenance for a given participant. (B) The same association between hippocampus annual change and memory annual change, adjusted for cohort/MRI scanner, this time depicted with a diagonal line representing the cognitive reserve line. The color code represents the level of cognitive reserve for a given participant.</small>
+
+We then created the CR and BM index with participants classified as on the CR pathway (N = `r cr_pathway`/`r total_participants`) and participants classified as on the BM pathway (N = `r bm_pathway`/`r total_participants`) (Figure 3). The mean total value of CR plus BM was `r round(mean_total_cr_bm, 3)` (SD = `r round(sd_total_cr_bm, 3)`) and the mean distance from the midline was `r round(mean_distance_midline, 3)` (SD = `r round(sd_distance_midline, 3)`).
+
+```{r echo=FALSE, warning=FALSE}
+# Create breaks for the graph looks nice
+breaks_values <- c(seq(-5, 5, by = 1), 0)
+breaks_values <- sort(unique(breaks_values))
+
+index_plot<-ggplot(clean_data, aes(x = index, y = cr_and_bm, fill = closer_to)) +
+  geom_point(aes(color = closer_to), shape = 21, size = 3, position = position_jitter(width = 0.01)) +
+  scale_fill_manual(values = c("BM" = "#AD88C6", "CR" = "#A1D6B2")) +
+  scale_color_manual(values = c("BM" = "#000000", "CR" = "#000000")) +
+  scale_x_continuous(
+    name = "Distance from Midline",
+    breaks = breaks_values,
+    labels = scales::label_number(accuracy = .1),
+    expand = c(0, 0),
+    limits = c(-2.2, 2.2)  # Set x-axis limits explicitly
+  ) +
+  labs(
+    title = "Cognitive Reserve / Brain Maintenance Index",
+    y = "Absolute Value of CR and BM",
+    fill = "Pathway",
+    color = "Pathway"
+  ) +
+  theme_minimal() +
+  theme(
+    axis.text.y = element_text(),
+    axis.ticks.y = element_line(),
+    panel.grid.major.y = element_line(),
+    panel.grid.minor.y = element_blank(),
+    legend.position = "right",
+    plot.margin = margin(t = 0.25, r = 0.25, b = 0.25, l = 0.25, unit = "cm"),
+    axis.text.x = element_text(margin = margin(t = -5)),
+    plot.title = element_text(hjust = 0.5)
+  )
+
+```
+
+__Figure 3:__ _Index of Brain Maintenance and Cognitive Reserve_
+
+```{r fig3, echo=FALSE, dpi = 400, fig.width=7, fig.height=4, message=FALSE, warning=FALSE}
+
+index_plot
+
+```
+
+An index depicting participants as either on the brain maintenance or cognitive reserve pathway. The x-axis represents the ratio of cognitive reserve to brain maintenance for participants with more cognitive reserve and the ratio of brain maintenance to cognitive reserve for participants with more brain maintenance. The y-axis represents the total level of cognitive reserve plus brain maintenance.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+# Education and CR / BM
+vars <- c(
+  "scale(reverse_cr)",
+  "scale(reverse_bm)"
+)
+
+int_vars <- c(
+  "scale(reverse_cr):scale(edu)",
+  "scale(reverse_bm):scale(edu)"
+)
+
+edu_cr <- get_regression_stats(scale(edu) ~ scale(reverse_cr) + study, data = clean_data, vars)
+edu_bm <- get_regression_stats(scale(edu) ~ scale(reverse_bm) + study, data = clean_data, vars)
+
+edu_cr_int <- get_regression_stats(scale(memory_slopes) ~ scale(reverse_cr) * scale(edu) + study, data = clean_data, int_vars)
+edu_bm_int <- get_regression_stats(scale(memory_slopes) ~ scale(reverse_bm) * scale(edu) + study, data = clean_data, int_vars)
+```
+
+__BM / CR and Education__
+
+There were no significant relationships between CR (_p_ = `r format_p_value(edu_cr$p_value)`, _p_<sub>FDR</sub> = `r format_p_value(p_value_df[p_value_df$model_name == "edu_cr", "adjusted_p_value"])`) or BM (_p_ = `r format_p_value(edu_bm$p_value)`, _p_<sub>FDR</sub> = `r format_p_value(p_value_df[p_value_df$model_name == "edu_bm", "adjusted_p_value"])`) and education. There was no significant interaction BM (_p_ = `r format_p_value(edu_bm_int$p_value)`, _p_<sub>FDR</sub> = `r format_p_value(p_value_df[p_value_df$model_name == "edu_bm_int", "adjusted_p_value"])`) and education regressed against memory. However, there was a significant interaction between CR (β = `r round(edu_cr_int$coef, 3)`, _p_ = `r format_p_value(edu_cr_int$p_value)`, _p_<sub>FDR</sub> = `r format_p_value(p_value_df[p_value_df$model_name == "edu_cr_int", "adjusted_p_value"])`, r² = `r round(edu_cr_int$r2, 3)`) and education regressed against memory. 
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+# Create a BM / CR & education table
+edu_table_data <- data.frame(
+  " " = c("", "**Education**",
+          "", "",
+          "**Education**"),
+  "**Cognitive Reserve**" = c("_Coefficient (95% CI)_", 
+                              paste0(round(edu_cr$coef, 3), " (", round(edu_cr$ci[1], 3), " to ", round(edu_cr$ci[2], 3), ")"), 
+                              "**Cognitive Reserve * Education**", "_Coefficient (95% CI)_",
+                              paste0(round(edu_cr_int$coef, 3), " (", round(edu_cr_int$ci[1], 3), " to ", round(edu_cr_int$ci[2], 3), ")")), 
+  " " = c("_Adjusted p-value_", 
+          format_p_value(p_value_df[p_value_df$model_name == "edu_cr", "adjusted_p_value"]),
+          "", "_Adjusted p-value_", format_p_value(p_value_df[p_value_df$model_name == "edu_cr_int", "adjusted_p_value"])), 
+  " " = c("_Adjusted R²_", round(edu_cr$adj_r2, 3), 
+          "", "_Adjusted R²_", round(edu_cr_int$adj_r2, 3)), 
+  "**Brain Maintenance**" = c("_Coefficient (95% CI)_", 
+                              paste0(round(edu_bm$coef, 3), " (", round(edu_bm$ci[1], 3), " to ", round(edu_bm$ci[2], 3), ")"), 
+                              "**Brain Maintenance * Education**", "_Coefficient (95% CI)_",
+                              paste0(round(edu_bm_int$coef, 3), " (", round(edu_bm_int$ci[1], 3), " to ", round(edu_bm_int$ci[2], 3), ")")), 
+  " " = c("_Adjusted p-value_", 
+          format_p_value(p_value_df[p_value_df$model_name == "edu_bm", "adjusted_p_value"]),
+          "", "_Adjusted p-value_", format_p_value(p_value_df[p_value_df$model_name == "edu_bm_int", "adjusted_p_value"])), 
+  " " = c("_Adjusted R²_", round(edu_bm$adj_r2, 3),
+          "", "_Adjusted R²_", round(edu_bm_int$adj_r2, 3)))
+```
+
+__Table 5__: _Linear Regressions with Cognitive Reserve / Brain Maintenance and Education_
+```{r tab5, echo=FALSE} 
+
+# Format and print the table
+kable(edu_table_data, format = "markdown", col.names = c(" ", "**Cognitive Reserve**", " ", " ", "**Brain Maintenance**", " ", " "))
+
+```
+
+Note. Models are adjusted for cohort/MRI scanner.
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+# Memory and function connectivity regs for BM
+
+# Set the priority variables
+priority_var_bm <- c(
+  "scale(reverse_bm)"
+)
+  
+priority_var_int_bm <- c(
+  "scale(reverse_bm):scale(dmn_slopes)",
+  "scale(reverse_bm):scale(ec_slopes)",
+  "scale(reverse_bm):scale(sn_slopes)"
+)
+
+
+bm_dmn_stats <- get_regression_stats(scale(dmn_slopes) ~ scale(reverse_bm) + study, data = clean_data, priority_var_bm)
+bm_dmn <- get_regression_stats(scale(memory_slopes) ~ scale(reverse_bm) * scale(dmn_slopes) + study, data = clean_data, priority_var_int_bm)
+
+bm_ecn_stats <- get_regression_stats(scale(ec_slopes) ~ scale(reverse_bm) + study, data = clean_data, priority_var_bm)
+bm_ec <- get_regression_stats(scale(memory_slopes) ~ scale(reverse_bm) * scale(ec_slopes) + study, data = clean_data, priority_var_int_bm)
+
+bm_sn_stats <- get_regression_stats(scale(sn_slopes) ~ scale(reverse_bm) + study, data = clean_data, priority_var_bm)
+bm_sn <- get_regression_stats(scale(memory_slopes) ~ scale(reverse_bm) * scale(sn_slopes) + study, data = clean_data, priority_var_int_bm)
+
+```
+
+__BM / CR and Functional Connectivity__ 
+
+There was no evidence of a significant association between BM and the DMN annual change (_p_ = `r format_p_value(bm_dmn_stats$p_value)`, _p_<sub>FDR</sub> = `r format_p_value(p_value_df[p_value_df$model_name == "bm_dmn_stats", "adjusted_p_value"])`) nor the ECN annual change (_p_ = `r format_p_value(bm_ecn_stats$p_value)`, _p_<sub>FDR</sub> = `r format_p_value(p_value_df[p_value_df$model_name == "bm_ecn_stats", "adjusted_p_value"])`). There was limited evidence of a significant association between BM and SN annual change; however this association did not survive correction for multiple comparisons (_p_ = `r format_p_value(bm_sn_stats$p_value)`, _p_<sub>FDR</sub> = `r format_p_value(p_value_df[p_value_df$model_name == "bm_sn_stats", "adjusted_p_value"])`). Additionally, there were no significant interactions between BM and both ECN annual change and SN annual change regressed against memory annual change (ECN _p_ = `r format_p_value(bm_ec$p_value)`, _p_<sub>FDR</sub> = `r format_p_value(p_value_df[p_value_df$model_name == "bm_ec", "adjusted_p_value"])`; SN _p_ = `r format_p_value(bm_sn$p_value)`, _p_<sub>FDR</sub> = `r format_p_value(p_value_df[p_value_df$model_name == "bm_sn", "adjusted_p_value"])`). Though we found some evidence of an interaction between BM and DMN annual change regressed against memory annual change, the interaction did not survive correction for multiple comparisons (DMN _p_ = `r format_p_value(bm_dmn$p_value)`, _p_<sub>FDR</sub> = `r format_p_value(p_value_df[p_value_df$model_name == "bm_dmn", "adjusted_p_value"])`).
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+# Memory and function connectivity regs for CR
+
+# Set the priority variables
+priority_var_cr <- c(
+  "scale(reverse_cr)"
+)
+  
+priority_var_int_cr <- c(
+  "scale(reverse_cr):scale(dmn_slopes)",
+  "scale(reverse_cr):scale(ec_slopes)",
+  "scale(reverse_cr):scale(sn_slopes)"
+)
+
+
+cr_dmn_stats <- get_regression_stats(scale(dmn_slopes) ~ scale(reverse_cr) + study, data = clean_data, priority_var_cr)
+cr_dmn <- get_regression_stats(scale(memory_slopes) ~ scale(reverse_cr) * scale(dmn_slopes) + study, data = clean_data, priority_var_int_cr)
+
+cr_ecn_stats <- get_regression_stats(scale(ec_slopes) ~ scale(reverse_cr) + study, data = clean_data, priority_var_cr)
+cr_ec <- get_regression_stats(scale(memory_slopes) ~ scale(reverse_cr) * scale(ec_slopes) + study, data = clean_data, priority_var_int_cr)
+
+cr_sn_stats <- get_regression_stats(scale(sn_slopes) ~ scale(reverse_cr) + study, data = clean_data, priority_var_cr)
+cr_sn <- get_regression_stats(scale(memory_slopes) ~ scale(reverse_cr) * scale(sn_slopes) + study, data = clean_data, priority_var_int_cr)
+
+```
+
+There was no evidence of a significant association between CR and DMN annual change (_p_ = `r format_p_value(cr_dmn_stats$p_value)`, _p_<sub>FDR</sub> = `r format_p_value(p_value_df[p_value_df$model_name == "cr_dmn_stats", "adjusted_p_value"])`), ECN annual change (_p_ = `r format_p_value(cr_ecn_stats$p_value)`, _p_<sub>FDR</sub> = `r format_p_value(p_value_df[p_value_df$model_name == "cr_ecn_stats", "adjusted_p_value"])`), nor SN annual change (_p_ = `r format_p_value(cr_sn_stats$p_value)`, _p_<sub>FDR</sub> = `r format_p_value(p_value_df[p_value_df$model_name == "cr_sn_stats", "adjusted_p_value"])`). Nor was there a significant interactions between CR and DMN annual change regressed against memory annual change (_p_ = `r format_p_value(cr_dmn$p_value)`, _p_<sub>FDR</sub> = `r format_p_value(p_value_df[p_value_df$model_name == "cr_dmn", "adjusted_p_value"])`). However, there was a significant interaction between CR and both ECN annual change and SN annual change regressed against memory annual change (ECN β = `r round(cr_ec$coef, 3)`, _p_ = `r format(format_p_value(cr_ec$p_value), scientific = FALSE)`, _p_<sub>FDR</sub> = `r format_p_value(p_value_df[p_value_df$model_name == "cr_ec", "adjusted_p_value"])`, r² = `r round(cr_ec$r2, 3)`; SN β = `r round(cr_sn$coef, 3)`, _p_ = `r format_p_value(cr_sn$p_value)`, _p_<sub>FDR</sub> = `r format_p_value(p_value_df[p_value_df$model_name == "cr_sn", "adjusted_p_value"])`, r² = `r round(cr_sn$r2, 3)`) (Figure 4). All results are summarized in Table 5. 
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+# Divide the continuous variable into groups to be able to better visualize the data 
+clean_data$reverse_cr_group <- cut(clean_data$reverse_cr,
+                                       breaks = quantile(clean_data$reverse_cr, probs = seq(0, 1, (1/2)), na.rm = TRUE),
+                                       include.lowest = TRUE,
+                                       labels = c("Low CR", "High CR"))
+
+ec_int <- ggplot(clean_data, aes(x = res_ec_slopes, y = res_mem_slopes, color = reverse_cr_group)) +
+          geom_point() +
+          geom_smooth(method = "lm", aes(fill = reverse_cr_group), alpha = 0.3) +
+          labs(y = "Memory Annual Change", 
+               x = "ECN Annual Change",
+               color = "Group",
+               fill = "Group") +   
+          theme_minimal() +
+          theme(legend.position = "bottom")  # Move legend to the bottom
+
+dmn_int <- ggplot(clean_data, aes(x = res_dmn_slopes, y = res_mem_slopes, color = reverse_cr_group)) +
+           geom_point() +
+           geom_smooth(method = "lm", aes(fill = reverse_cr_group), alpha = 0.3) +
+           labs(y = "Memory Annual Change", 
+                x = "DMN Annual Change",
+                color = "Group",
+                fill = "Group") +   
+           theme_minimal() +
+           theme(legend.position = "bottom") 
+
+
+sn_int <- ggplot(clean_data, aes(x = res_sn_slopes, y = res_mem_slopes, color = reverse_cr_group)) +
+          geom_point() +
+          geom_smooth(method = "lm", aes(fill = reverse_cr_group), alpha = 0.3) +
+          labs(y = "Memory Annual Change", 
+               x = "SN Annual Change",
+               color = "Group",
+               fill = "Group") +  
+          theme_minimal() +
+          theme(legend.position = "bottom") 
+
+
+# Combine the plots into one figure
+combined_plot <- sn_int + ec_int + plot_layout(ncol = 2)
+
+```
+
+__Figure 4:__ _The Interaction Between Cognitive Reserve, Functional Connectivity and Memory_
+
+```{r fig4, echo=FALSE, dpi = 400, fig.width=7, fig.height=4, message=FALSE, warning=FALSE}
+
+combined_plot
+
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+high_cr <- clean_data %>% 
+  filter(reverse_cr_group == "High CR")
+
+low_cr <- clean_data %>% 
+  filter(reverse_cr_group == "Low CR")
+
+vars <- c(
+  "scale(dmn_slopes)",
+  "scale(sn_slopes)",
+  "scale(ec_slopes)"
+)
+
+vars_unscale <- c(
+  "dmn_slopes",
+  "sn_slopes",
+  "ec_slopes"
+)
+
+high_cr_sn <- get_regression_stats(scale(memory_slopes) ~ scale(sn_slopes) + study, data = high_cr, vars)
+high_cr_sn_unscaled <- get_regression_stats((memory_slopes) ~ sn_slopes + study, data = high_cr, vars_unscale)
+
+low_cr_sn <- get_regression_stats(scale(memory_slopes) ~ scale(sn_slopes) + study, data = low_cr, vars)
+low_cr_sn_unscaled <- get_regression_stats((memory_slopes) ~ (sn_slopes) + study, data = low_cr, vars_unscale)
+
+high_cr_ec <- get_regression_stats(scale(memory_slopes) ~ scale(ec_slopes) + study, data = high_cr, vars)
+high_cr_ec_unscaled <- get_regression_stats((memory_slopes) ~ (ec_slopes) + study, data = high_cr, vars_unscale)
+
+low_cr_ec <- get_regression_stats(scale(memory_slopes) ~ scale(ec_slopes) + study, data = low_cr, vars)
+low_cr_ec_unscaled <- get_regression_stats((memory_slopes) ~ (ec_slopes) + study, data = low_cr, vars_unscale)
+
+```
+
+<small>(A) The association between SN annual change and memory annual change, adjusted for cohort/MRI scanner, depicted divided into two groups: high cognitive reverse (blue) and low cognitive reserve (orange). There are linear models for each group with the high cognitive reserve displaying a coefficient of `r round(high_cr_sn_unscaled$coef, 3)` (scaled: `r round(high_cr_sn$coef, 3)`) and the low cognitive reserve group displaying a coefficient of `r round(low_cr_sn_unscaled$coef, 3)` (scaled: `r round(low_cr_sn$coef, 3)`) and confidence intervals. (B) The association between ECN annual change and memory annual change, adjusted for cohort/MRI scanner, depicted divided into the two groups with the high cognitive reserve displaying a coefficient of `r round(high_cr_ec_unscaled$coef, 3)` (scaled: `r round(high_cr_ec$coef, 3)`) and the low cognitive reserve group displaying a coefficient of `r round(low_cr_ec_unscaled$coef, 3)` (scaled: `r round(low_cr_ec$coef, 3)`).</small>
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+# Create the table
+table_data <- data.frame(
+  " " = c("", "**DMN Annual Change**",
+          "**ECN Annual Change**", "**SN Annual Change**", "", "",
+          "**Memory Annual Change**", "", 
+          "", "**Memory Annual Change**",
+          "", "", "**Memory Annual Change**"),
+  "**Cognitive Reserve**" = c("_Coefficient (95% CI)_", 
+                              paste0(round(cr_dmn_stats$coef, 3), " (", round(cr_dmn_stats$ci[1], 3), " to ", round(cr_dmn_stats$ci[2], 3), ")"), 
+                              paste0(round(cr_ecn_stats$coef, 3), " (", round(cr_ecn_stats$ci[1], 3), " to ", round(cr_ecn_stats$ci[2], 3), ")"),
+                              paste0(round(cr_sn_stats$coef, 3), " (", round(cr_sn_stats$ci[1], 3), " to ", round(cr_sn_stats$ci[2], 3), ")"),
+                              "**Cognitive Reserve * DMN Annual Change**", "_Coefficient (95% CI)_",
+                              paste0(round(cr_dmn$coef, 3), " (", round(cr_dmn$ci[1], 3), " to ", round(cr_dmn$ci[2], 3), ")"), 
+                              "**Cognitive Reserve * ECN Annual Change**", "_Coefficient (95% CI)_",
+                              paste0(round(cr_ec$coef, 3), " (", round(cr_ec$ci[1], 3), " to ", round(cr_ec$ci[2], 3), ")"), 
+                              "**Cognitive Reserve * SN Annual Change**", "_Coefficient (95% CI)_",
+                              paste0(round(cr_sn$coef, 3), " (", round(cr_sn$ci[1], 3), " to ", round(cr_sn$ci[2], 3), ")")), 
+  " " = c("_Adjusted p-value_", 
+          format_p_value(p_value_df[p_value_df$model_name == "cr_dmn_stats", "adjusted_p_value"]),
+          format_p_value(p_value_df[p_value_df$model_name == "cr_ecn_stats", "adjusted_p_value"]),
+          format_p_value(p_value_df[p_value_df$model_name == "cr_sn_stats", "adjusted_p_value"]),
+          "", "_Adjusted p-value_", format_p_value(p_value_df[p_value_df$model_name == "cr_dmn", "adjusted_p_value"]), 
+          "", "_Adjusted p-value_", format_p_value(p_value_df[p_value_df$model_name == "cr_ec", "adjusted_p_value"]),
+          "", "_Adjusted p-value_", format_p_value(p_value_df[p_value_df$model_name == "cr_sn", "adjusted_p_value"])),
+  " " = c("_Adjusted R²_", round(cr_dmn_stats$adj_r2, 3), round(cr_ecn_stats$adj_r2, 3), round(cr_sn_stats$adj_r2, 3),
+          "", "_Adjusted R²_", round(cr_dmn$adj_r2, 3), 
+          "", "_Adjusted R²_", round(cr_ec$adj_r2, 3),
+          "", "_Adjusted R²_", round(cr_sn$adj_r2, 3)), 
+  "**Brain Maintenance**" = c("_Coefficient (95% CI)_", 
+                              paste0(round(bm_dmn_stats$coef, 3), " (", round(bm_dmn_stats$ci[1], 3), " to ", round(bm_dmn_stats$ci[2], 3), ")"), 
+                              paste0(round(bm_ecn_stats$coef, 3), " (", round(bm_ecn_stats$ci[1], 3), " to ", round(bm_ecn_stats$ci[2], 3), ")"), 
+                              paste0(round(bm_sn_stats$coef, 3), " (", round(bm_sn_stats$ci[1], 3), " to ", round(bm_sn_stats$ci[2], 3), ")"), 
+                              "**Brain Maintenance * DMN Annual Change**", "_Coefficient (95% CI)_",
+                              paste0(round(bm_dmn$coef, 3), " (", round(bm_dmn$ci[1], 3), " to ", round(bm_dmn$ci[2], 3), ")"), 
+                              "**Brain Maintenance * ECN Annual Change**", "_Coefficient (95% CI)_",
+                              paste0(round(bm_ec$coef, 3), " (", round(bm_ec$ci[1], 3), " to ", round(bm_ec$ci[2], 3), ")"),
+                              "**Brain Maintenance * SN Annual Change**", "_Coefficient (95% CI)_",
+                              paste0(round(bm_sn$coef, 3), " (", round(bm_sn$ci[1], 3), " to ", round(bm_sn$ci[2], 3), ")")), 
+  " " = c("_Adjusted p-value_", 
+          format_p_value(p_value_df[p_value_df$model_name == "bm_dmn_stats", "adjusted_p_value"]),
+          format_p_value(p_value_df[p_value_df$model_name == "bm_ecn_stats", "adjusted_p_value"]),
+          format_p_value(p_value_df[p_value_df$model_name == "bm_sn_stats", "adjusted_p_value"]),
+          "", "_Adjusted p-value_", format_p_value(p_value_df[p_value_df$model_name == "bm_dmn", "adjusted_p_value"]), 
+          "", "_Adjusted p-value_", format_p_value(p_value_df[p_value_df$model_name == "bm_ec", "adjusted_p_value"]),
+          "", "_Adjusted p-value_", format_p_value(p_value_df[p_value_df$model_name == "bm_sn", "adjusted_p_value"])),
+  " " = c("_Adjusted R²_", round(bm_dmn_stats$adj_r2, 3), round(bm_ecn_stats$adj_r2, 3), round(bm_sn_stats$adj_r2, 3),
+          "", "_Adjusted R²_", round(bm_dmn$adj_r2, 3), 
+          "", "_Adjusted R²_", round(bm_ec$adj_r2, 3),
+          "", "_Adjusted R²_", round(bm_sn$adj_r2, 3)))
+```
+
+__Table 6__: _Linear Regressions with Cognitive Reserve / Brain Maintenance and Functional Connectivity_
+```{r tab6, echo=FALSE} 
+
+# Format and print the table
+kable(table_data, format = "markdown", col.names = c(" ", "**Cognitive Reserve**", " ", " ", "**Brain Maintenance**", " ", " "))
+
+```
+
+Note. Models are adjusted for cohort/MRI scanner.

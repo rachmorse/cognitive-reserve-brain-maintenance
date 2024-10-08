@@ -7,5 +7,9 @@
 # Do not ignore Python scripts 
 !*.ipynb
 
+# Do not ignore R or R markdown scripts 
+!*.R
+!*.Rmd
+
 # Except for this script
 cleaning BBHI data.ipynb
