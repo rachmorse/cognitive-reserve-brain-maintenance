@@ -4,14 +4,22 @@ output: html_document
 date: "2024-04-26"
 ---
 ```{r setup, include=FALSE}
-if (!require("ggplot2")) {install.packages("ggplot2"); require("ggplot2")}
-if (!require("dplyr")) {install.packages("dplyr"); require("dplyr")}
-if (!require("stringr")) {install.packages("stringr"); require("stringr")}
-if (!require("tidyr")) {install.packages("tidyr"); require("tidyr")}
-if (!require("kableExtra")) {install.packages("kableExtra"); require("kableExtra")}
-if (!require("knitr")) {install.packages("knitr"); require("knitr")}
-if (!require("broom")) {install.packages("broom"); require("broom")}
-
+if (!require("ggplot2")) {
+  install.packages("ggplot2")
+  require("ggplot2")
+}
+if (!require("dplyr")) {
+  install.packages("dplyr")
+  require("dplyr")
+}
+if (!require("stringr")) {
+  install.packages("stringr")
+  require("stringr")
+}
+if (!require("tidyr")) {
+  install.packages("tidyr")
+  require("tidyr")
+}
 
 library(readr)
 library(readxl)
@@ -19,7 +27,6 @@ library(readxl)
 
 Start by reading in the clean data in wide format 
 ```{r warning=FALSE}
-
 betula_df <- read.csv("/tsd/p274/data/durable/projects/p027-cr_bm/Clean Data All Cohorts/Wide Format/Betula no outliers data wide.csv")
 
 waha_df <- read.csv("/tsd/p274/data/durable/projects/p027-cr_bm/Clean Data All Cohorts/Wide Format/WAHA no outliers data wide.csv")
@@ -27,12 +34,10 @@ waha_df <- read.csv("/tsd/p274/data/durable/projects/p027-cr_bm/Clean Data All C
 cobra_df <- read.csv("/tsd/p274/data/durable/projects/p027-cr_bm/Clean Data All Cohorts/Wide Format/Cobra no outliers data wide.csv")
 
 oslo_df <- read.csv("/tsd/p274/data/durable/projects/p027-cr_bm/Clean Data All Cohorts/Wide Format/Oslo no outliers data wide.csv")
-
 ```
 
 Drop NAs - this assumes that to get a memory score they need to have all of the baseline data 
 ```{r}
-
 drop_na_rows <- function(df, columns) {
   # Use complete.cases to drop rows with NA values in the specified columns
   df[complete.cases(df[, columns]), ]
@@ -46,7 +51,6 @@ oslo_df <- drop_na_rows(oslo_df, oslo_columns)
 betula_df <- drop_na_rows(betula_df, betula_columns)
 waha_df <- drop_na_rows(waha_df, waha_columns)
 cobra_df <- drop_na_rows(cobra_df, cobra_columns)
-
 ```
 
 Start by considering ICV for the HC measures
@@ -57,7 +61,6 @@ Adjusted (HPC) volume = hc.1 (per participant) - b.1 (from the whole cohort) * (
 Adjusted (HPC) volume = hc.2 - b.2 * (icv.1 (because it does not change from tp1) - mean_icv)
 
 ```{r}
-
 # Start by making a merged df
 merged_cohorts <- bind_rows(waha_df, cobra_df, betula_df, oslo_df)
 
@@ -70,30 +73,30 @@ mean_icv_by_study_timepoint <- merged_cohorts %>%
 mean_icv_by_study_timepoint <- mean_icv_by_study_timepoint %>%
   rename_with(~ gsub("icv", "icv_mean", .), starts_with("icv"))
 
-# Merge the mean ICV df in to the main df 
+# Merge the mean ICV df in to the main df
 merged_cohorts <- merged_cohorts %>%
   left_join(mean_icv_by_study_timepoint, by = "study")
 
 #### Define a function to calculate the regression slope b for each study at each timepoint ####
 calculate_slope <- function(df, hip_total_cols, icv_cols) {
-  slopes <- data.frame()  # Create an empty dataframe to store the slopes
-  
+  slopes <- data.frame() # Create an empty dataframe to store the slopes
+
   for (study in unique(df$study)) {
     for (i in seq_along(hip_total_cols)) {
       data <- df[df$study == study, c(hip_total_cols[i], icv_cols[i])]
-      
+
       # Skip if there is no data for this study/timepoint
       if (nrow(data) == 0 || all(is.na(data[[hip_total_cols[i]]]), is.na(data[[icv_cols[i]]]))) {
         next
       }
-      
+
       model <- lm(data[[hip_total_cols[i]]] ~ data[[icv_cols[i]]], data = data, na.action = na.exclude)
-      slope <- coef(model)[2]  # Calculate the slope
-      
-      slopes <- rbind(slopes, data.frame(study = study, timepoint = i, slope = slope))  # Add the slope to the dataframe
+      slope <- coef(model)[2] # Calculate the slope
+
+      slopes <- rbind(slopes, data.frame(study = study, timepoint = i, slope = slope)) # Add the slope to the dataframe
     }
   }
-  
+
   return(slopes)
 }
 
@@ -106,8 +109,10 @@ slopes <- calculate_slope(merged_cohorts, hip_total_cols, icv_cols)
 
 # Convert the df to wide format to be able to merge it
 slopes_wide <- slopes %>%
-  pivot_wider(names_from = timepoint, values_from = c(-study, -timepoint), 
-              names_prefix = "slope.", names_sep = "_")
+  pivot_wider(
+    names_from = timepoint, values_from = c(-study, -timepoint),
+    names_prefix = "slope.", names_sep = "_"
+  )
 
 # Merge the wide slope df into the main df
 merged_cohorts <- merged_cohorts %>%
@@ -121,7 +126,7 @@ for (timepoint in 1:6) {
   icv_mean_col <- paste0("icv_mean.", timepoint)
   slope_col <- paste0("slope.", timepoint)
   adjusted_volume_col <- paste0("adj_HIP_total.", timepoint)
-  
+
   merged_cohorts <- merged_cohorts %>%
     mutate(!!adjusted_volume_col := .data[[raw_volume_col]] - .data[[slope_col]] * (.data[[icv_col]] - .data[[icv_mean_col]]))
 }
@@ -130,36 +135,37 @@ for (timepoint in 1:6) {
 correlation <- cor(merged_cohorts$HIP_total.4, merged_cohorts$adj_HIP_total.4, use = "complete.obs")
 print(correlation)
 
-ggplot(merged_cohorts, aes(x = HIP_total.4, y = adj_HIP_total.4)) + 
+ggplot(merged_cohorts, aes(x = HIP_total.4, y = adj_HIP_total.4)) +
   geom_point()
-
 ```
 
 
 Now calculate the of slopes for memory change for participants for Oslo cohort:
 ```{r}
-
-oslo_df <- merged_cohorts %>% 
+oslo_df <- merged_cohorts %>%
   filter(study %in% c("oslo_skyra", "oslo_avanto", "oslo_mix"))
 
-compute_slope_oslo <- function(data){ # scale first
-  data[,c(paste0("sc_CVLT_A_Total.", 1:6))] <- 
-    apply(data[,c(paste0("CVLT_A_Total.", 1:6))], 2, scale, 
-          center = mean(data$CVLT_A_Total_baseline),
-          scale = sd(data$CVLT_A_Total_baseline))
-  
-  data[,c(paste0("sc_CVLT_5min_Free.", 1:6))] <- 
-    apply(data[,c(paste0("CVLT_5min_Free.", 1:6))], 2, scale, 
-          center = mean(data$CVLT_5min_Free_baseline),
-          scale = sd(data$CVLT_5min_Free_baseline))
-  
-  data[,c(paste0("sc_CVLT_30min_Free.", 1:6))] <- 
-    apply(data[,c(paste0("CVLT_30min_Free.", 1:6))], 2, scale, 
-          center = mean(data$CVLT_30min_Free_baseline),
-          scale = sd(data$CVLT_30min_Free_baseline))
+compute_slope_oslo <- function(data) { # scale first
+  data[, c(paste0("sc_CVLT_A_Total.", 1:6))] <-
+    apply(data[, c(paste0("CVLT_A_Total.", 1:6))], 2, scale,
+      center = mean(data$CVLT_A_Total_baseline),
+      scale = sd(data$CVLT_A_Total_baseline)
+    )
+
+  data[, c(paste0("sc_CVLT_5min_Free.", 1:6))] <-
+    apply(data[, c(paste0("CVLT_5min_Free.", 1:6))], 2, scale,
+      center = mean(data$CVLT_5min_Free_baseline),
+      scale = sd(data$CVLT_5min_Free_baseline)
+    )
+
+  data[, c(paste0("sc_CVLT_30min_Free.", 1:6))] <-
+    apply(data[, c(paste0("CVLT_30min_Free.", 1:6))], 2, scale,
+      center = mean(data$CVLT_30min_Free_baseline),
+      scale = sd(data$CVLT_30min_Free_baseline)
+    )
 
   # Calculate memory composite
-  for(i in 1:6) {
+  for (i in 1:6) {
     data <- data %>%
       mutate(!!paste0("memory.", i) := rowMeans(
         dplyr::select(
@@ -172,58 +178,61 @@ compute_slope_oslo <- function(data){ # scale first
       ))
   }
 
-    # Calculate slopes
-    for (i in 1:nrow(data)){
-      em_data = data[i,c(paste0("memory.", 1:6))]
-      hc_data = data[i,c(paste0("adj_HIP_total.", 1:6))]
-      age = data[i, c(paste0("age.", 1:6))]
-      data[i, "em_obs"] <- sum(!is.na(em_data))
-      data[i, "hc_obs"] <- sum(!is.na(hc_data))
-      if (sum(!is.na(em_data))>1 & sum(!is.na(hc_data))>1){
+  # Calculate slopes
+  for (i in 1:nrow(data)) {
+    em_data <- data[i, c(paste0("memory.", 1:6))]
+    hc_data <- data[i, c(paste0("adj_HIP_total.", 1:6))]
+    age <- data[i, c(paste0("age.", 1:6))]
+    data[i, "em_obs"] <- sum(!is.na(em_data))
+    data[i, "hc_obs"] <- sum(!is.na(hc_data))
+    if (sum(!is.na(em_data)) > 1 & sum(!is.na(hc_data)) > 1) {
       data[i, "mem_time"] <- max(age[!is.na(em_data)]) - min(age[!is.na(em_data)]) # to calculate follow-up time
       data[i, "hc_time"] <- max(age[!is.na(hc_data)]) - min(age[!is.na(hc_data)])
-      data[i, "memory_slopes"] <- lm(em_data[!is.na(em_data)]~ age[!is.na(em_data)])$coeff[2]
-      data[i, "hc_slopes"] <- lm(hc_data[ !is.na(hc_data)]~ age[ !is.na(hc_data)])$coeff[2]
-      }
+      data[i, "memory_slopes"] <- lm(em_data[!is.na(em_data)] ~ age[!is.na(em_data)])$coeff[2]
+      data[i, "hc_slopes"] <- lm(hc_data[!is.na(hc_data)] ~ age[!is.na(hc_data)])$coeff[2]
     }
-    data %>%
+  }
+  data %>%
     ungroup()
-  
+
   return(data)
 }
 
 oslo_df <- compute_slope_oslo(oslo_df)
-
 ```
 
 Now calculate the slope for participants for the Betula cohort
 ```{r}
-betula_df <- merged_cohorts %>% 
+betula_df <- merged_cohorts %>%
   filter(study == "betula")
 
-compute_slope_betula <- function(data){
-  data[, c(paste0("sc_CuedRecall_sptcrc.", 1:2))] <- 
-    apply(data[,c(paste0("SPT_VTCategoryCuedRecall..sptcrc.", 1:2))], 2, scale, 
-          center = mean(data$"CuedRecall_sptcrc_baseline", na.rm=T),
-          scale = sd(data$"CuedRecall_sptcrc_baseline", na.rm=T))
-  
-  data[, c(paste0("sc_CuedRecall_vtcrc.", 1:2))] <- 
-    apply(data[,c(paste0("SPT_VTCategoryCuedRecall..vtcrc.", 1:2))], 2, scale, 
-          center = mean(data$"CuedRecall_vtcrc_baseline", na.rm=T),
-          scale = sd(data$"CuedRecall_vtcrc_baseline", na.rm=T))
-  
-  data[, c(paste0("sc_FreeRecall_sptb.", 1:2))] <- 
-  apply(data[,c(paste0("SPT_VTFreeRecall..sptb.", 1:2))], 2, scale, 
-        center = mean(data$"FreeRecall_sptb_baseline", na.rm=T),
-        scale = sd(data$"FreeRecall_sptb_baseline", na.rm=T))
-  
-  data[, c(paste0("sc_FreeRecall_vtb.", 1:2))] <- 
-  apply(data[,c(paste0("SPT_VTFreeRecall..vtb.", 1:2))], 2, scale, 
-        center = mean(data$"FreeRecall_vtb_baseline", na.rm=T),
-        scale = sd(data$"FreeRecall_vtb_baseline", na.rm=T))
-  
-    # Calculate memory composite
-  for(i in 1:2) {
+compute_slope_betula <- function(data) {
+  data[, c(paste0("sc_CuedRecall_sptcrc.", 1:2))] <-
+    apply(data[, c(paste0("SPT_VTCategoryCuedRecall..sptcrc.", 1:2))], 2, scale,
+      center = mean(data$"CuedRecall_sptcrc_baseline", na.rm = T),
+      scale = sd(data$"CuedRecall_sptcrc_baseline", na.rm = T)
+    )
+
+  data[, c(paste0("sc_CuedRecall_vtcrc.", 1:2))] <-
+    apply(data[, c(paste0("SPT_VTCategoryCuedRecall..vtcrc.", 1:2))], 2, scale,
+      center = mean(data$"CuedRecall_vtcrc_baseline", na.rm = T),
+      scale = sd(data$"CuedRecall_vtcrc_baseline", na.rm = T)
+    )
+
+  data[, c(paste0("sc_FreeRecall_sptb.", 1:2))] <-
+    apply(data[, c(paste0("SPT_VTFreeRecall..sptb.", 1:2))], 2, scale,
+      center = mean(data$"FreeRecall_sptb_baseline", na.rm = T),
+      scale = sd(data$"FreeRecall_sptb_baseline", na.rm = T)
+    )
+
+  data[, c(paste0("sc_FreeRecall_vtb.", 1:2))] <-
+    apply(data[, c(paste0("SPT_VTFreeRecall..vtb.", 1:2))], 2, scale,
+      center = mean(data$"FreeRecall_vtb_baseline", na.rm = T),
+      scale = sd(data$"FreeRecall_vtb_baseline", na.rm = T)
+    )
+
+  # Calculate memory composite
+  for (i in 1:2) {
     data <- data %>%
       mutate(!!paste0("memory.", i) := rowMeans(
         dplyr::select(
@@ -236,155 +245,155 @@ compute_slope_betula <- function(data){
         na.rm = TRUE
       ))
   }
-  
-        # Calculate slopes
-    for (i in 1:nrow(data)){
-      em_data = data[i,c(paste0("memory.", 1:2))]
-      hc_data = data[i,c(paste0("adj_HIP_total.", 1:2))]
-      age = data[i, c(paste0("age.", 1:2 ))]
-      data[i, "em_obs"] <- sum(!is.na(em_data))
-      data[i, "hc_obs"] <- sum(!is.na(hc_data))
-      if (sum(!is.na(em_data))>1 & sum(!is.na(hc_data))>1){
+
+  # Calculate slopes
+  for (i in 1:nrow(data)) {
+    em_data <- data[i, c(paste0("memory.", 1:2))]
+    hc_data <- data[i, c(paste0("adj_HIP_total.", 1:2))]
+    age <- data[i, c(paste0("age.", 1:2))]
+    data[i, "em_obs"] <- sum(!is.na(em_data))
+    data[i, "hc_obs"] <- sum(!is.na(hc_data))
+    if (sum(!is.na(em_data)) > 1 & sum(!is.na(hc_data)) > 1) {
       data[i, "mem_time"] <- max(age[!is.na(em_data)]) - min(age[!is.na(em_data)]) # to calculate follow-up time
       data[i, "hc_time"] <- max(age[!is.na(hc_data)]) - min(age[!is.na(hc_data)])
-      data[i, "memory_slopes"] <- lm(em_data[!is.na(em_data)]~ age[!is.na(em_data)])$coeff[2]
-      data[i, "hc_slopes"] <- lm(hc_data[ !is.na(hc_data)]~ age[ !is.na(hc_data)])$coeff[2]
-      }
+      data[i, "memory_slopes"] <- lm(em_data[!is.na(em_data)] ~ age[!is.na(em_data)])$coeff[2]
+      data[i, "hc_slopes"] <- lm(hc_data[!is.na(hc_data)] ~ age[!is.na(hc_data)])$coeff[2]
     }
-    data %>%
+  }
+  data %>%
     ungroup()
 
   return(data)
 }
 
 betula_df <- compute_slope_betula(betula_df)
-
 ```
 
 And do the same for the Waha cohort 
 ```{r}
-waha_df <- merged_cohorts %>% 
+waha_df <- merged_cohorts %>%
   filter(study == "waha")
 
-compute_slope_waha <- function(data){ # scale first
-    data[, c(paste0("sc_Verbal_memory_RAVLT_total.", 1:3))] <- 
-      apply(data[,c(paste0("Verbal_memory_RAVLT_Total.", 1:3))], 2, scale, 
-            center = mean(data$Verbal_memory_RAVLT_total_baseline, na.rm=T),
-            scale = sd(data$Verbal_memory_RAVLT_total_baseline, na.rm=T))
-    
-    data[, c(paste0("sc_Verbal_memory_RAVLT_delayed.", 1:3))] <- 
-      apply(data[,c(paste0("Verbal_Memory_RAVLT_delayed.", 1:3))], 2, scale, 
-            center = mean(data$Verbal_memory_RAVLT_delayed_baseline, na.rm=T),
-            scale = sd(data$Verbal_memory_RAVLT_delayed_baseline, na.rm=T))
-        
-    data[, c(paste0("sc_Visual_Memory_ROCF_Imm.", 1:3))] <- 
-      apply(data[,c(paste0("Visual_Memory_ROCF_Imm.", 1:3))], 2, scale, 
-            center = mean(data$Visual_Memory_ROCF_Imm_baseline, na.rm=T),
-            scale = sd(data$Visual_Memory_ROCF_Imm_baseline, na.rm=T))
-    
-      # Calculate memory composite
-    for(i in 1:3) {
-      data <- data %>%
-        mutate(!!paste0("memory.", i) := rowMeans(
-          dplyr::select(
-            .,
-            paste0("sc_Verbal_memory_RAVLT_total.", i),
-            paste0("sc_Verbal_memory_RAVLT_delayed.", i),
-            paste0("sc_Visual_Memory_ROCF_Imm.", i)
-          ),
-          na.rm = TRUE
-        ))
-    }
-  
-        # Calculate slopes
-    for (i in 1:nrow(data)){
-      em_data = data[i,c(paste0("memory.", 1:3))]
-      hc_data = data[i,c(paste0("adj_HIP_total.", 1:3))]
-      age = data[i, c(paste0("age.", 1:3))]
-      data[i, "em_obs"] <- sum(!is.na(em_data))
-      data[i, "hc_obs"] <- sum(!is.na(hc_data))
-      if (sum(!is.na(em_data))>1 & sum(!is.na(hc_data))>1){
+compute_slope_waha <- function(data) { # scale first
+  data[, c(paste0("sc_Verbal_memory_RAVLT_total.", 1:3))] <-
+    apply(data[, c(paste0("Verbal_memory_RAVLT_Total.", 1:3))], 2, scale,
+      center = mean(data$Verbal_memory_RAVLT_total_baseline, na.rm = T),
+      scale = sd(data$Verbal_memory_RAVLT_total_baseline, na.rm = T)
+    )
+
+  data[, c(paste0("sc_Verbal_memory_RAVLT_delayed.", 1:3))] <-
+    apply(data[, c(paste0("Verbal_Memory_RAVLT_delayed.", 1:3))], 2, scale,
+      center = mean(data$Verbal_memory_RAVLT_delayed_baseline, na.rm = T),
+      scale = sd(data$Verbal_memory_RAVLT_delayed_baseline, na.rm = T)
+    )
+
+  data[, c(paste0("sc_Visual_Memory_ROCF_Imm.", 1:3))] <-
+    apply(data[, c(paste0("Visual_Memory_ROCF_Imm.", 1:3))], 2, scale,
+      center = mean(data$Visual_Memory_ROCF_Imm_baseline, na.rm = T),
+      scale = sd(data$Visual_Memory_ROCF_Imm_baseline, na.rm = T)
+    )
+
+  # Calculate memory composite
+  for (i in 1:3) {
+    data <- data %>%
+      mutate(!!paste0("memory.", i) := rowMeans(
+        dplyr::select(
+          .,
+          paste0("sc_Verbal_memory_RAVLT_total.", i),
+          paste0("sc_Verbal_memory_RAVLT_delayed.", i),
+          paste0("sc_Visual_Memory_ROCF_Imm.", i)
+        ),
+        na.rm = TRUE
+      ))
+  }
+
+  # Calculate slopes
+  for (i in 1:nrow(data)) {
+    em_data <- data[i, c(paste0("memory.", 1:3))]
+    hc_data <- data[i, c(paste0("adj_HIP_total.", 1:3))]
+    age <- data[i, c(paste0("age.", 1:3))]
+    data[i, "em_obs"] <- sum(!is.na(em_data))
+    data[i, "hc_obs"] <- sum(!is.na(hc_data))
+    if (sum(!is.na(em_data)) > 1 & sum(!is.na(hc_data)) > 1) {
       data[i, "mem_time"] <- max(age[!is.na(em_data)]) - min(age[!is.na(em_data)]) # to calculate follow-up time
       data[i, "hc_time"] <- max(age[!is.na(hc_data)]) - min(age[!is.na(hc_data)])
-      data[i, "memory_slopes"] <- lm(em_data[!is.na(em_data)]~ age[!is.na(em_data)])$coeff[2]
-      data[i, "hc_slopes"] <- lm(hc_data[ !is.na(hc_data)]~ age[ !is.na(hc_data)])$coeff[2]
-      }
+      data[i, "memory_slopes"] <- lm(em_data[!is.na(em_data)] ~ age[!is.na(em_data)])$coeff[2]
+      data[i, "hc_slopes"] <- lm(hc_data[!is.na(hc_data)] ~ age[!is.na(hc_data)])$coeff[2]
     }
-    data %>%
+  }
+  data %>%
     ungroup()
 
   return(data)
 }
 
 waha_df <- compute_slope_waha(waha_df)
-
-
 ```
 
 Now create the Cobra one
 ```{r}
-cobra_df <- merged_cohorts %>% 
+cobra_df <- merged_cohorts %>%
   filter(study == "cobra")
 
-compute_slope_cobra <- function(data){ # scale first
-    data[, c(paste0("sc_EM_numerical.", 1:2))] <- 
-      apply(data[,c(paste0("EM_numerical.", 1:2))], 2, scale, 
-            center = mean(data$EM_numerical.1, na.rm=T),
-            scale = sd(data$EM_numerical.1, na.rm=T))
-    
-    data[, c(paste0("sc_EM_figural.", 1:2))] <- 
-      apply(data[,c(paste0("EM_figural.", 1:2))], 2, scale, 
-            center = mean(data$EM_figural.1, na.rm=T),
-            scale = sd(data$EM_figural.1, na.rm=T))
-    
-    data[, c(paste0("sc_EM_verbal.", 1:2))] <- 
-      apply(data[,c(paste0("EM_verbal.", 1:2))], 2, scale, 
-            center = mean(data$EM_verbal.1, na.rm=T),
-            scale = sd(data$EM_verbal.1, na.rm=T))
-        
-        # Calculate memory composite
-    for(i in 1:2) {
-      data <- data %>%
-        mutate(!!paste0("memory.", i) := rowMeans(
-          dplyr::select(
-            .,
-            paste0("sc_EM_numerical.", i),
-            paste0("sc_EM_figural.", i),
-            paste0("sc_EM_verbal.", i)
-          ),
-          na.rm = TRUE
-        ))
-    }
-    
-        # Calculate slopes
-    for (i in 1:nrow(data)){
-      em_data = data[i,c(paste0("memory.", 1:2))]
-      hc_data = data[i,c(paste0("adj_HIP_total.", 1:2))]
-      age = data[i, c(paste0("age.", 1:2))]
-      data[i, "em_obs"] <- sum(!is.na(em_data))
-      data[i, "hc_obs"] <- sum(!is.na(hc_data))
-      if (sum(!is.na(em_data))>1 & sum(!is.na(hc_data))>1){
+compute_slope_cobra <- function(data) { # scale first
+  data[, c(paste0("sc_EM_numerical.", 1:2))] <-
+    apply(data[, c(paste0("EM_numerical.", 1:2))], 2, scale,
+      center = mean(data$EM_numerical.1, na.rm = T),
+      scale = sd(data$EM_numerical.1, na.rm = T)
+    )
+
+  data[, c(paste0("sc_EM_figural.", 1:2))] <-
+    apply(data[, c(paste0("EM_figural.", 1:2))], 2, scale,
+      center = mean(data$EM_figural.1, na.rm = T),
+      scale = sd(data$EM_figural.1, na.rm = T)
+    )
+
+  data[, c(paste0("sc_EM_verbal.", 1:2))] <-
+    apply(data[, c(paste0("EM_verbal.", 1:2))], 2, scale,
+      center = mean(data$EM_verbal.1, na.rm = T),
+      scale = sd(data$EM_verbal.1, na.rm = T)
+    )
+
+  # Calculate memory composite
+  for (i in 1:2) {
+    data <- data %>%
+      mutate(!!paste0("memory.", i) := rowMeans(
+        dplyr::select(
+          .,
+          paste0("sc_EM_numerical.", i),
+          paste0("sc_EM_figural.", i),
+          paste0("sc_EM_verbal.", i)
+        ),
+        na.rm = TRUE
+      ))
+  }
+
+  # Calculate slopes
+  for (i in 1:nrow(data)) {
+    em_data <- data[i, c(paste0("memory.", 1:2))]
+    hc_data <- data[i, c(paste0("adj_HIP_total.", 1:2))]
+    age <- data[i, c(paste0("age.", 1:2))]
+    data[i, "em_obs"] <- sum(!is.na(em_data))
+    data[i, "hc_obs"] <- sum(!is.na(hc_data))
+    if (sum(!is.na(em_data)) > 1 & sum(!is.na(hc_data)) > 1) {
       data[i, "mem_time"] <- max(age[!is.na(em_data)]) - min(age[!is.na(em_data)]) # to calculate follow-up time
       data[i, "hc_time"] <- max(age[!is.na(hc_data)]) - min(age[!is.na(hc_data)])
-      data[i, "memory_slopes"] <- lm(em_data[!is.na(em_data)]~ age[!is.na(em_data)])$coeff[2]
-      data[i, "hc_slopes"] <- lm(hc_data[ !is.na(hc_data)]~ age[ !is.na(hc_data)])$coeff[2]
-      }
+      data[i, "memory_slopes"] <- lm(em_data[!is.na(em_data)] ~ age[!is.na(em_data)])$coeff[2]
+      data[i, "hc_slopes"] <- lm(hc_data[!is.na(hc_data)] ~ age[!is.na(hc_data)])$coeff[2]
     }
-    data %>%
+  }
+  data %>%
     ungroup()
 
   return(data)
 }
 
 cobra_df <- compute_slope_cobra(cobra_df)
-
 ```
 
 Then merge the cohorts back together into one dataframe
 ```{r}
-
 merged_cohorts <- bind_rows(waha_df, cobra_df, betula_df, oslo_df)
-
 ```
 
 Make a graph showing what one linear regression looks like (for the purpose of demonstrating how the annual change formula works)
@@ -412,7 +421,7 @@ plot_data <- na.omit(plot_data)
 # Fit the linear model for the subject
 fit <- lm(HC ~ Time, data = plot_data)
 
-# Plot 
+# Plot
 ggplot(plot_data, aes(x = Time, y = HC)) +
   geom_point(color = "red") +
   geom_smooth(method = "lm", color = "blue", se = FALSE) +
@@ -421,57 +430,54 @@ ggplot(plot_data, aes(x = Time, y = HC)) +
     x = "Time Since Baseline",
     y = "Adjusted Hippocampal Volume"
   ) +
-  annotate("text", x = max(time), y = min(hc_data), 
-           label = paste("Slope:", round(coef(fit)[2], 2)), 
-           color = "black", hjust = 1.1, vjust = 2.5)
+  annotate("text",
+    x = max(time), y = min(hc_data),
+    label = paste("Slope:", round(coef(fit)[2], 2)),
+    color = "black", hjust = 1.1, vjust = 2.5
+  )
 ```
 
 Then create average functional connectivity values for the DMN 
 ```{r}
-
 # Loop the code making the averages over the 6 timepoints for each participant
 for (i in 1:6) {
-# Calculate the average of all dDMN and vDMN columns and save it as DMN
-  merged_cohorts[paste0('dmn.', i)] <- rowMeans(merged_cohorts[, grepl(paste0("^(dDMN|vDMN)_.*\\.(dDMN|vDMN)_.*\\.", i, "$"), names(merged_cohorts))], na.rm = TRUE) 
+  # Calculate the average of all dDMN and vDMN columns and save it as DMN
+  merged_cohorts[paste0("dmn.", i)] <- rowMeans(merged_cohorts[, grepl(paste0("^(dDMN|vDMN)_.*\\.(dDMN|vDMN)_.*\\.", i, "$"), names(merged_cohorts))], na.rm = TRUE)
 }
 
 # Check that the output is ok
 summary(merged_cohorts$dmn.6)
-
 ```
 
 Then create average functional connectivity values for the Executive Control Network 
 ```{r}
-
 # Loop the code making the averages over the 6 timepoints for each participant
 for (i in 1:6) {
-# Calculate the average of all RECN and LECN columns and save it as EC
-  merged_cohorts[paste0('ec.', i)] <- rowMeans(merged_cohorts[, grepl(paste0("^(RECN|LECN)_.*\\.(RECN|LECN)_.*\\.", i, "$"), names(merged_cohorts))], na.rm = TRUE)}
+  # Calculate the average of all RECN and LECN columns and save it as EC
+  merged_cohorts[paste0("ec.", i)] <- rowMeans(merged_cohorts[, grepl(paste0("^(RECN|LECN)_.*\\.(RECN|LECN)_.*\\.", i, "$"), names(merged_cohorts))], na.rm = TRUE)
+}
 
 # Check that the output is ok
 summary(merged_cohorts$ec.5)
-
 ```
 
 Then create average functional connectivity values for the Anterior Salience Network 
 ```{r}
-
 var_list <- merged_cohorts[, grepl(paste0("^(AS)_.*\\.(AS)_.*\\.", i, "$"), names(merged_cohorts))]
 
 # Loop the code making the averages over the 6 timepoints for each participant
 for (i in 1:6) {
-# Calculate the average of all RECN and LECN columns and save it as EC
-  merged_cohorts[paste0('sn.', i)] <- rowMeans(merged_cohorts[, grepl(paste0("^(AS)_.*\\.(AS)_.*\\.", i, "$"), names(merged_cohorts))], na.rm = TRUE)}
+  # Calculate the average of all RECN and LECN columns and save it as EC
+  merged_cohorts[paste0("sn.", i)] <- rowMeans(merged_cohorts[, grepl(paste0("^(AS)_.*\\.(AS)_.*\\.", i, "$"), names(merged_cohorts))], na.rm = TRUE)
+}
 
 # Check that the output is ok
 summary(merged_cohorts$sn.5)
-
 ```
 
 Now calculate the slope for FC annual change
 
 ```{r}
-
 compute_fc_slope <- function(data) {
   # Calculate slopes
   for (i in 1:nrow(data)) {
@@ -480,10 +486,10 @@ compute_fc_slope <- function(data) {
     sn_data <- data[i, c(paste0("sn.", 1:6))]
     age <- data[i, c(paste0("age.", 1:6))]
     data[i, "fc_obs"] <- sum(!is.na(dmn_data))
-    
+
     if (sum(!is.na(dmn_data)) > 1) {
       data[i, "fc_time"] <- max(age[!is.na(dmn_data)]) - min(age[!is.na(dmn_data)])
-      
+
       if (sum(!is.na(dmn_data)) > 1) {
         data[i, "dmn_slopes"] <- lm(dmn_data[!is.na(dmn_data)] ~ age[!is.na(dmn_data)])$coeff[2]
       }
@@ -500,29 +506,28 @@ compute_fc_slope <- function(data) {
 }
 
 merged_cohorts <- compute_fc_slope(merged_cohorts)
-
 ```
 
 Then clean a main dataframe for fc
 ```{r}
-
 # Create a new dataframe
 
-clean_data <- select(merged_cohorts,
-                     id, study, sex,edu, mmse, cohort,
-                     dmn_slopes, ec_slopes, sn_slopes, 
-                     memory_slopes, hc_slopes,
-                     em_obs, hc_obs, fc_obs, 
-                     mem_time, hc_time, fc_time,
-                     paste0("age.", 1:6),
-                     paste0("memory.", 1:6),
-                     paste0("adj_HIP_total.", 1:6),
-                     paste0("HIP_total.", 1:6),
-                     paste0("icv.", 1:6),
-                     paste0("ec.", 1:6),
-                     paste0("sn.", 1:6),
-                     paste0("dmn.", 1:6)
-                    )
+clean_data <- select(
+  merged_cohorts,
+  id, study, sex, edu, mmse, cohort,
+  dmn_slopes, ec_slopes, sn_slopes,
+  memory_slopes, hc_slopes,
+  em_obs, hc_obs, fc_obs,
+  mem_time, hc_time, fc_time,
+  paste0("age.", 1:6),
+  paste0("memory.", 1:6),
+  paste0("adj_HIP_total.", 1:6),
+  paste0("HIP_total.", 1:6),
+  paste0("icv.", 1:6),
+  paste0("ec.", 1:6),
+  paste0("sn.", 1:6),
+  paste0("dmn.", 1:6)
+)
 
 # Drop people who are missing all necessary data
 
@@ -534,7 +539,6 @@ clean_data <- clean_data %>%
 
 clean_data <- clean_data %>%
   filter(mem_time > 1.5)
-
 ```
 
 Find the baseline and followup values because not everyone has tp1 data and follow-up could be tp2 - tp6
@@ -546,7 +550,7 @@ Note that this needs to be used carefully and any code comparing BL and FU value
 create_bl_fu_columns <- function(data) {
   # Variables/Patterns to process
   variables <- c("dmn", "ec", "sn", "adj_HIP_total", "memory", "age")
-  
+
   # Create new columns
   for (var in variables) {
     data[[paste0(var, "_baseline")]] <- NA
@@ -558,7 +562,7 @@ create_bl_fu_columns <- function(data) {
     pattern <- paste0("^", var, "\\.\\d+$") # \\d selects any digit <10 at the end of str $
     indices <- grep(pattern, names(original_data))
     values <- original_data[row, indices, drop = FALSE]
-    
+
     non_na_indices <- which(!is.na(values))
 
     if (length(non_na_indices) >= 1) {
@@ -571,17 +575,17 @@ create_bl_fu_columns <- function(data) {
       followup_index <- indices[non_na_indices[length(non_na_indices)]]
       data[[followup_col]][row] <- original_data[row, followup_index]
     }
-    
+
     return(data)
   }
-  
+
   # Iterate over each row and variables
   for (i in 1:nrow(data)) {
     for (var in variables) {
       data <- assign_columns(i, var, data, data)
     }
   }
-  
+
   return(data)
 }
 
@@ -592,11 +596,22 @@ clean_data <- clean_data %>%
 # Check that it is working correctly
 dmn_check <- clean_data %>%
   select(id, matches("^dmn\\.\\d+$"), dmn_baseline, dmn_followup)
+```
+
+```{r}
+# FU time
+# Create a new variable to represent average follow-up time
+clean_data <- clean_data %>%
+  mutate(FU_time = rowMeans(select(., mem_time, hc_time, fc_time), na.rm = TRUE))
+
+# FU observations
+# Create a new variable to represent average number of follow-ups
+clean_data <- clean_data %>%
+  mutate(FU_obs = rowMeans(select(., em_obs, hc_obs, fc_obs), na.rm = TRUE))
 
 ```
 
 Look at the difference in demographics by cohort
-
 ```{r}
 # MMSE
 mmse_model <- aov(mmse ~ cohort, data = clean_data)
@@ -616,27 +631,23 @@ summary(edu_model)
 
 TukeyHSD(edu_model)
 
-# FU time
-# Create a new variable to represent average follow-up time 
-clean_data <- clean_data%>%
-  mutate(FU_time = rowMeans(select(., mem_time, hc_time, fc_time), na.rm = TRUE))
+# Sex
+chisq.test(clean_data$sex, clean_data$cohort)
 
+# FU time
 fu_time_model <- aov(FU_time ~ cohort, data = clean_data)
 summary(fu_time_model)
 
-# FU observations
-# Create a new variable to represent average number of follow-ups 
-clean_data <- clean_data%>%
-  mutate(FU_obs = rowMeans(select(., em_obs, hc_obs, fc_obs), na.rm = TRUE))
+TukeyHSD(fu_time_model)
+
+# FU time
 fu_obs_model <- aov(FU_obs ~ cohort, data = clean_data)
 summary(fu_obs_model)
 
-
+TukeyHSD(fu_obs_model)
 ```
 
 Now write the data frames as CSVs
 ```{r}
-
 write.csv(clean_data, file = "/tsd/p274/data/durable/projects/p027-cr_bm/Clean Data All Cohorts/Wide Format/Merged cohorts analysed data wide.csv")
-
 ```

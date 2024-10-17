@@ -5,11 +5,26 @@ date: "2024-04-04"
 ---
 
 ```{r setup, include=FALSE}
-if (!require("ggplot2")) {install.packages("ggplot2"); require("ggplot2")}
-if (!require("dplyr")) {install.packages("dplyr"); require("dplyr")}
-if (!require("stringr")) {install.packages("stringr"); require("stringr")}
-if (!require("tidyr")) {install.packages("tidyr"); require("tidyr")}
-if (!require("gtools")) {install.packages("gtools"); require("gtools")}
+if (!require("ggplot2")) {
+  install.packages("ggplot2")
+  require("ggplot2")
+}
+if (!require("dplyr")) {
+  install.packages("dplyr")
+  require("dplyr")
+}
+if (!require("stringr")) {
+  install.packages("stringr")
+  require("stringr")
+}
+if (!require("tidyr")) {
+  install.packages("tidyr")
+  require("tidyr")
+}
+if (!require("gtools")) {
+  install.packages("gtools")
+  require("gtools")
+}
 
 library(readr)
 library(readxl)
@@ -20,7 +35,7 @@ Note that education data is years of education and sex is coded as male=1 and fe
 Create a clean data frame for WAHA
 Start with reading in the demographic and structural data for the WAHA nuts group 
 ```{r warning=FALSE}
-# Read in the structural and demographic data 
+# Read in the structural and demographic data
 waha_df_struct <- read.csv2("/tsd/p274/data/durable/projects/p027-cr_bm/aaic/waha_nous_MRI.csv")
 
 # Calculate total HC volume
@@ -28,23 +43,22 @@ waha_df_struct <- waha_df_struct %>%
   mutate(HIP_total = HIP_left + HIP_right)
 
 # Rename the IDs
-waha_df_struct$id <- paste("waha_", waha_df_struct$ID, sep = "") 
+waha_df_struct$id <- paste("waha_", waha_df_struct$ID, sep = "")
 
 # Read in the memory data
 waha_df_dem <- read.csv2("/tsd/p274/data/durable/projects/p027-cr_bm/aaic/waha_nous_NPS.csv")
 
 # Rename the IDs
-waha_df_dem$id <- paste("waha_", waha_df_dem$ID, sep = "") 
+waha_df_dem$id <- paste("waha_", waha_df_dem$ID, sep = "")
 
 # Merge
 waha_df_struct <- merge(waha_df_dem, waha_df_struct, by = c("id", "timepoint"), all = TRUE) # This keeps all participants so need to drop NAs
-
 ```
 
 Now, read in the demographic, and structural data for the WAHA control group 
 
 ```{r warning=FALSE}
-# Read in control data 
+# Read in control data
 waha_df_struct_controls <- read.delim("/tsd/p274/data/durable/projects/p027-cr_bm/aaic/bcn.txt", header = TRUE)
 
 # Calculate total HC volume
@@ -52,38 +66,40 @@ waha_df_struct_controls <- waha_df_struct_controls %>%
   mutate(HIP_total = HIP_left + HIP_right)
 
 # Rename the IDs
-waha_df_struct_controls$id <- paste("waha_", waha_df_struct_controls$ID, sep = "") 
+waha_df_struct_controls$id <- paste("waha_", waha_df_struct_controls$ID, sep = "")
 
-# Read in control education 
+# Read in control education
 waha_df_edu_controls <- read.delim("/tsd/p274/data/durable/projects/p027-cr_bm/aaic/bcn_educ.txt", header = TRUE)
 
 # Set the timeframe to 1 for all participants
 waha_df_edu_controls$timepoint <- 1
 
 # Rename the IDs
-waha_df_edu_controls$id <- paste("waha_", waha_df_edu_controls$ID, sep = "") 
+waha_df_edu_controls$id <- paste("waha_", waha_df_edu_controls$ID, sep = "")
 
 # Merge
-waha_df_struct_controls <- merge(waha_df_edu_controls, waha_df_struct_controls, by = c("id", "timepoint"), all = TRUE) 
+waha_df_struct_controls <- merge(waha_df_edu_controls, waha_df_struct_controls, by = c("id", "timepoint"), all = TRUE)
 
-# Read in control sex 
+# Read in control sex
 waha_df_sex_controls <- read.delim("/tsd/p274/data/durable/projects/p027-cr_bm/aaic/bcn_sex.txt", header = TRUE)
 
 # Set the timeframe to 1 for all participants
 waha_df_sex_controls$timepoint <- 1
 
 # Rename the IDs
-waha_df_sex_controls$id <- paste("waha_", waha_df_sex_controls$ID, sep = "") 
+waha_df_sex_controls$id <- paste("waha_", waha_df_sex_controls$ID, sep = "")
 
 # Merge
-waha_df_struct_controls <- merge(waha_df_sex_controls, waha_df_struct_controls, by = c("id", "timepoint"), all = TRUE) 
+waha_df_struct_controls <- merge(waha_df_sex_controls, waha_df_struct_controls, by = c("id", "timepoint"), all = TRUE)
 
 # Change variable to numeric for merge
 waha_df_struct_controls$Visual_Memory_ROCF_Imm <- as.numeric(waha_df_struct_controls$Visual_Memory_ROCF_Imm) # Need to change to numeric for later
 
 # Merge the two WAHA cohorts
-waha_df_struct <- merge(waha_df_struct_controls, waha_df_struct, by = c("id", "timepoint", "sex", "age", "education",
-               "MMSE", "HIP_left","HIP_right", "HIP_total", "ICV"), all = TRUE) 
+waha_df_struct <- merge(waha_df_struct_controls, waha_df_struct, by = c(
+  "id", "timepoint", "sex", "age", "education",
+  "MMSE", "HIP_left", "HIP_right", "HIP_total", "ICV"
+), all = TRUE)
 
 # This gives two rows per id per timepoint if there were any NAs in either df before the merge
 # So this code fill the NAs in with the data available
@@ -91,7 +107,7 @@ waha_df_struct <- waha_df_struct %>%
   group_by(id, timepoint) %>%
   fill(everything(), .direction = "downup")
 
-# Then this removes the repeats rows 
+# Then this removes the repeats rows
 waha_df_struct <- waha_df_struct %>%
   distinct(id, timepoint, .keep_all = TRUE)
 
@@ -109,24 +125,24 @@ waha_df_struct <- waha_df_struct %>%
   )
 
 # Clean WAHA to only include necessary data
-columns_to_keep <- c("id", "timepoint", 
-                     "sex", "age", "edu",
-                     "mmse", "HIP_left","HIP_right", "HIP_total", "icv" 
+columns_to_keep <- c(
+  "id", "timepoint",
+  "sex", "age", "edu",
+  "mmse", "HIP_left", "HIP_right", "HIP_total", "icv"
 )
 
 waha_df_struct <- select(waha_df_struct, all_of(columns_to_keep))
-
 ```
 
 
 Before getting into the FC data, this code is to generate the regions in the Shirer atlas that are also in the task invariant network
 ```{r message=FALSE, warning=FALSE}
-
 # Read in the WAHA data as a reference
-waha_df_fc <- read_delim("/tsd/p274/data/durable/projects/p027-cr_bm/rsFC/WAHAFiltAndResid_Fisher-z-trans.csv", 
-                         delim = ",", escape_double = FALSE, trim_ws = TRUE)
+waha_df_fc <- read_delim("/tsd/p274/data/durable/projects/p027-cr_bm/rsFC/WAHAFiltAndResid_Fisher-z-trans.csv",
+  delim = ",", escape_double = FALSE, trim_ws = TRUE
+)
 
-# Remove str from timepoint and convert to numeric 
+# Remove str from timepoint and convert to numeric
 waha_df_fc$timepoint <- as.numeric(gsub("t", "", waha_df_fc$timepoint))
 
 # Rename ID to id
@@ -135,20 +151,19 @@ waha_df_fc <- rename(waha_df_fc, id = code)
 # Rename the IDs to include waha in the id
 waha_df_fc <- waha_df_fc %>%
   mutate(id = gsub("WAHA", "waha_", id))
-
 ```
 
 Now clean the functional WAHA data and merge it with the structural
 
 
 ```{r message=FALSE, warning=FALSE}
-
 # Subset waha_df_fc to only include necessary data
 selected_cols <- c(
-  "id", "timepoint", 
-  names(waha_df_fc)[grepl("^(dDMN|vDMN).*- (vDMN|dDMN)", names(waha_df_fc))], 
-  names(waha_df_fc)[grepl("^(RECN|LECN).*- (RECN|LECN)", names(waha_df_fc))], 
-  names(waha_df_fc)[grepl("^(AS).*- (AS)", names(waha_df_fc))])
+  "id", "timepoint",
+  names(waha_df_fc)[grepl("^(dDMN|vDMN).*- (vDMN|dDMN)", names(waha_df_fc))],
+  names(waha_df_fc)[grepl("^(RECN|LECN).*- (RECN|LECN)", names(waha_df_fc))],
+  names(waha_df_fc)[grepl("^(AS).*- (AS)", names(waha_df_fc))]
+)
 
 # Remove duplicate column names
 selected_cols <- unique(selected_cols) # because some fc pairs are in multiple networks and as saved twice
@@ -174,22 +189,22 @@ waha_df <- merge(waha_df_struct, waha_df_fc, by = c("id", "timepoint"), all = TR
 waha_df <- waha_df %>%
   group_by(id) %>%
   mutate(across(starts_with("mmse"), ~ if_else(timepoint != 1, .[timepoint == 1], .)))
-
 ```
 
 Now read in the memory data for WAHA and merge
 ```{r}
-
 # Import the raw WAHA memory data
-waha_mem <- read_excel("/tsd/p274/data/durable/projects/p027-cr_bm/aaic/UB_datatable_COGNITIVE[24].xlsx", 
-    sheet = "Test table_WAHA")
+waha_mem <- read_excel("/tsd/p274/data/durable/projects/p027-cr_bm/aaic/UB_datatable_COGNITIVE[24].xlsx",
+  sheet = "Test table_WAHA"
+)
 
-waha_mem <- select(waha_mem, Subject_id, 'Round_ id', Visual_Memory_ROCF_Imm, Verbal_memory_RAVLT_Total, Verbal_Memory_RAVLT_delayed)
+waha_mem <- select(waha_mem, Subject_id, "Round_ id", Visual_Memory_ROCF_Imm, Verbal_memory_RAVLT_Total, Verbal_Memory_RAVLT_delayed)
 
 waha_mem <- waha_mem %>%
   rename(
     id = "Subject_id",
-    timepoint = "Round_ id")
+    timepoint = "Round_ id"
+  )
 
 waha_mem$timepoint <- gsub("R", "", waha_mem$timepoint)
 waha_mem$timepoint <- as.numeric(waha_mem$timepoint)
@@ -201,12 +216,11 @@ waha_mem$Verbal_Memory_RAVLT_delayed[waha_mem$Verbal_Memory_RAVLT_delayed == -99
 
 waha_mem$id <- paste0("waha_", waha_mem$id)
 
-# Merge the memory data 
-waha_df <- merge(waha_mem, waha_df, by = c('id', 'timepoint'), all = TRUE)
+# Merge the memory data
+waha_df <- merge(waha_mem, waha_df, by = c("id", "timepoint"), all = TRUE)
 
 # Drop 2000 ids because they are not technically WAHA
 waha_df <- waha_df[!grepl("^waha_20", waha_df$id), ]
-
 ```
 
 Clean WAHA df and reformat to wide df
@@ -237,7 +251,6 @@ waha_df <- waha_baseline %>%
 
 waha_df <- waha_df %>%
   select(-starts_with("timepoint"))
-
 ```
 
 
@@ -246,7 +259,8 @@ Create a clean df for COBRA data
 Read in the memory data first
 ```{r message=FALSE, warning=FALSE}
 cobra_mem <- read_delim("/tsd/p274/data/durable/projects/p027-cr_bm/aaic/cobra.csv",
-                         delim = ";", escape_double = FALSE, trim_ws = TRUE)
+  delim = ";", escape_double = FALSE, trim_ws = TRUE
+)
 
 # Rename the IDs
 cobra_mem$id <- paste("cobra_", cobra_mem$subject_ID, sep = "") # This adds the string cobra and renames column to id
@@ -255,8 +269,8 @@ cobra_mem$id <- paste("cobra_", cobra_mem$subject_ID, sep = "") # This adds the 
 cobra_mem <- cobra_mem %>%
   rename(
     edu = "education",
-    mmse = "MMSE")
-
+    mmse = "MMSE"
+  )
 ```
 
 Then read in the structural data 
@@ -272,27 +286,26 @@ cobra_struct$id <- paste("cobra_", cobra_struct$subject_ID, sep = "") # This add
 
 # Rename variables
 cobra_struct <- cobra_struct %>%
-   rename(icv = "ICV")
+  rename(icv = "ICV")
 
 # Merge COBRA structural and mem dfs into one
-cobra_struct <- merge(cobra_mem, cobra_struct, by = c("id", "timepoint"), all = TRUE) 
+cobra_struct <- merge(cobra_mem, cobra_struct, by = c("id", "timepoint"), all = TRUE)
 
 # Clean Cobra to only include necessary data
-columns_to_keep <- c("id", "timepoint", 
-                     "sex", "age", "edu",
-                     "mmse", "HIP_left","HIP_right", "HIP_total", "icv", 
-                     "EM_verbal", "EM_numerical", "EM_figural"
+columns_to_keep <- c(
+  "id", "timepoint",
+  "sex", "age", "edu",
+  "mmse", "HIP_left", "HIP_right", "HIP_total", "icv",
+  "EM_verbal", "EM_numerical", "EM_figural"
 )
 
 cobra_struct <- select(cobra_struct, all_of(columns_to_keep))
-
 ```
 
 Now read in functional data and merge
 
 ```{r message=FALSE, warning=FALSE}
-
-# Read COBRA functional data 
+# Read COBRA functional data
 cobra_func <- read_csv("/tsd/p274/data/durable/projects/p027-cr_bm/Umu/FC_shirer_CobraBetula/FC_Shirer90x90_Fisher-z-trans_FiltAndResid_Cobra_smallBB.csv")
 
 # Rename id column
@@ -301,14 +314,17 @@ cobra_func <- cobra_func %>%
 
 # Add a new column to specify the timepoint
 cobra_func <- cobra_func %>%
-  mutate(timepoint = ifelse(grepl("y00$",id),1,
-                            ifelse(grepl("y05$",id), 2, NA)))
+  mutate(timepoint = ifelse(grepl("y00$", id), 1,
+    ifelse(grepl("y05$", id), 2, NA)
+  ))
 
 # Subset cobra_func to only include necessary data
-selected_cols <- c("id", "timepoint", 
-                   names(cobra_func)[grepl("^(dDMN|vDMN).*-(vDMN|dDMN)", names(cobra_func))], 
-                   names(cobra_func)[grepl("^(RECN|LECN).*-(RECN|LECN)", names(cobra_func))],
-                   names(cobra_func)[grepl("^(AS).*-(AS)", names(cobra_func))])
+selected_cols <- c(
+  "id", "timepoint",
+  names(cobra_func)[grepl("^(dDMN|vDMN).*-(vDMN|dDMN)", names(cobra_func))],
+  names(cobra_func)[grepl("^(RECN|LECN).*-(RECN|LECN)", names(cobra_func))],
+  names(cobra_func)[grepl("^(AS).*-(AS)", names(cobra_func))]
+)
 
 selected_cols <- unique(selected_cols) # because some fc connections are in multiple networks
 cobra_func <- cobra_func[, selected_cols]
@@ -320,14 +336,12 @@ cobra_func <- cobra_func %>%
 # Merge COBRA structural and functional dfs into one
 
 cobra_df <- merge(cobra_struct, cobra_func, by = c("id", "timepoint"), all = TRUE) # This keeps all participants so need to drop NAs
-
 ```
 
 
 Rename variables and covert to wide format
 
 ```{r warning=FALSE}
-
 # Save a copy of the df as csv before changing to wide format
 write.csv(cobra_df, file = "/tsd/p274/data/durable/projects/p027-cr_bm/Clean Data All Cohorts/Cobra clean raw data.csv")
 
@@ -355,14 +369,13 @@ cobra_df <- full_join(cobra_baseline, cobra_followup, by = c("id", "sex", "edu",
 # Remove timepoint variable
 cobra_df <- cobra_df %>%
   select(-starts_with("timepoint"))
-
 ```
 
 Create a clean df for Betula data
 Start by reading in and cleaning the structural data
 ```{r warning=FALSE}
-# Read Betula structural data 
-betula_df_struct <- read_excel("/tsd/p274/data/durable/projects/p027-cr_bm/Umu/Betula_Freesurfer6_T567_long_2020-09-15_20-02-22_p027.xlsx") 
+# Read Betula structural data
+betula_df_struct <- read_excel("/tsd/p274/data/durable/projects/p027-cr_bm/Umu/Betula_Freesurfer6_T567_long_2020-09-15_20-02-22_p027.xlsx")
 
 # Rename variables
 betula_df_struct <- betula_df_struct %>%
@@ -372,16 +385,18 @@ betula_df_struct <- betula_df_struct %>%
     HIP_left = "aseg:Left-Hippocampus(Volume_mm3)",
     HIP_right = "aseg:Right-Hippocampus(Volume_mm3)",
     icv = "aseg:EstimatedTotalIntraCranialVol.eTIV"
-    )
+  )
 
 # Calculate total HC volume
 betula_df_struct <- betula_df_struct %>%
   mutate(HIP_total = HIP_left + HIP_right)
 
 # Subset betula_df_struct to only include necessary data
-columns_to_keep <- c("timepoint", 
-                     "id",
-                     "HIP_total", "HIP_left", "HIP_right", "icv")
+columns_to_keep <- c(
+  "timepoint",
+  "id",
+  "HIP_total", "HIP_left", "HIP_right", "icv"
+)
 
 betula_df_struct <- select(betula_df_struct, all_of(columns_to_keep))
 
@@ -393,13 +408,10 @@ betula_df_struct <- betula_df_struct %>%
 betula_df_struct <- betula_df_struct %>%
   group_by(id) %>%
   mutate(timepoint = row_number())
-
-
 ```
 Now read in the Betula functional data
 
 ```{r message=FALSE, warning=FALSE}
-
 betula_func <- read_csv("/tsd/p274/data/durable/projects/p027-cr_bm/Umu/FC_shirer_CobraBetula/FC_Shirer90x90_Fisher-z-trans_FiltAndResid_Betula_smallBB.csv")
 
 # Rename id column
@@ -423,23 +435,23 @@ betula_func <- betula_func %>%
   mutate(id = paste0("betula_", sub("_T[5-7]$", "", id)))
 
 # Subset betula_func to only include necessary data
-selected_cols <- c("id", "timepoint", 
-                   names(betula_func)[grepl("^(dDMN|vDMN).*-(vDMN|dDMN)", names(betula_func))], 
-                   names(betula_func)[grepl("^(RECN|LECN).*-(RECN|LECN)", names(betula_func))],
-                   names(betula_func)[grepl("^(AS).*-(AS)", names(betula_func))])
+selected_cols <- c(
+  "id", "timepoint",
+  names(betula_func)[grepl("^(dDMN|vDMN).*-(vDMN|dDMN)", names(betula_func))],
+  names(betula_func)[grepl("^(RECN|LECN).*-(RECN|LECN)", names(betula_func))],
+  names(betula_func)[grepl("^(AS).*-(AS)", names(betula_func))]
+)
 
 selected_cols <- unique(selected_cols) # because some fc connections are in multiple networks
 betula_func <- betula_func[, selected_cols]
 
 # Merge Betula functional and structural dfs and clean
-betula_df <- merge(betula_df_struct, betula_func, by = c("id", "timepoint"), all = TRUE) 
-
+betula_df <- merge(betula_df_struct, betula_func, by = c("id", "timepoint"), all = TRUE)
 ```
 
 Read in Betula memory df 
 
 ```{r message=FALSE, warning=FALSE}
-
 betula_em <- read_excel("/tsd/p274/data/durable/projects/p027-cr_bm/Umu/B_p027.xlsx")
 
 # Rename variables
@@ -453,7 +465,7 @@ betula_em <- betula_em %>%
     sex = "Participant::sex"
   )
 
-columns_to_keep = c("id", "timepoint", "edu", "mmse", "sex", "SPT_VTCategoryCuedRecall::sptcrc", "SPT_VTCategoryCuedRecall::vtcrc","SPT_VTFreeRecall::sptb", "SPT_VTFreeRecall::vtb")
+columns_to_keep <- c("id", "timepoint", "edu", "mmse", "sex", "SPT_VTCategoryCuedRecall::sptcrc", "SPT_VTCategoryCuedRecall::vtcrc", "SPT_VTFreeRecall::sptb", "SPT_VTFreeRecall::vtb")
 
 betula_em <- select(betula_em, all_of(columns_to_keep))
 
@@ -462,17 +474,16 @@ betula_em <- select(betula_em, all_of(columns_to_keep))
 betula_em <- betula_em %>%
   mutate(id = paste0("betula_", gsub("\\.", "", sub("_T[5-7]$", "", id))))
 
-# Change timepoint 
+# Change timepoint
 betula_em <- betula_em %>%
   group_by(id) %>%
   mutate(timepoint = row_number())
 
-# Recode the 'sex' variable. Currently its coded the opposite to 
-betula_em$sex <- recode(betula_em$sex, '2' = "male", '1' = "female")
+# Recode the 'sex' variable. Currently its coded the opposite to
+betula_em$sex <- recode(betula_em$sex, "2" = "male", "1" = "female")
 
 # Merge Betula dfs into one
 betula_df <- merge(betula_em, betula_df, by = c("id", "timepoint"), all = TRUE) # This keeps all participants so need to drop NAs
-
 ```
 
 Read in Betula ages df 
@@ -480,32 +491,30 @@ Read in Betula ages df
 ```{r message=FALSE, warning=FALSE}
 betula_age <- read_excel("/tsd/p274/data/durable/projects/p027-cr_bm/Umu/LB_data_tables_setup_V6_MRI-dates_2019-02-12 - KLAR.xlsx")
 
-betula_age <- betula_age %>% 
+betula_age <- betula_age %>%
   rename(
     id = "Subject_id",
     timepoint = "SubjectRound_ id",
     age = "Fmri_Age"
   )
 
-betula_age <- betula_age %>% 
+betula_age <- betula_age %>%
   select(id, timepoint, age)
 
-betula_age <- betula_age %>% 
+betula_age <- betula_age %>%
   mutate(id = paste0("betula_", gsub("\\.", "", id)))
 
 # Merge Betula dfs into one
-betula_df <- merge(betula_age, betula_df, by = c("id", "timepoint"), all = TRUE) 
-
+betula_df <- merge(betula_age, betula_df, by = c("id", "timepoint"), all = TRUE)
 ```
 
 Reshape the df to wide format
 
 Note that while Betula does have three timepoints of data, we only have ages for tp1 and 2 and need to drop tp3 data. I drop it here.
 ```{r}
-
 betula_df <- betula_df %>%
   subset(timepoint != 3)
-  
+
 
 # Save a copy of the df as csv before changing to wide format
 write.csv(betula_df, file = "/tsd/p274/data/durable/projects/p027-cr_bm/Clean Data All Cohorts/Betula clean raw data.csv")
@@ -513,8 +522,8 @@ write.csv(betula_df, file = "/tsd/p274/data/durable/projects/p027-cr_bm/Clean Da
 # Select only the tp 1 MMSE values
 # Please note that MMSE now is only baseline values
 betula_df <- betula_df %>%
-    group_by(id) %>%
-    mutate(across(starts_with("mmse"), ~ if_else(timepoint != 1, .[timepoint == 1], .)))
+  group_by(id) %>%
+  mutate(across(starts_with("mmse"), ~ if_else(timepoint != 1, .[timepoint == 1], .)))
 
 # Reformat the df with one row for each participant
 
@@ -530,11 +539,10 @@ betula_followup <- betula_df %>%
 
 # Join the reshaped data frames together
 betula_df <- betula_baseline %>%
-  full_join(betula_followup, by = c("id", "sex", "edu", "mmse")) 
+  full_join(betula_followup, by = c("id", "sex", "edu", "mmse"))
 
 betula_df <- betula_df %>%
   select(-starts_with("timepoint"))
-
 ```
 
 Create a clean df for the Oslo data
@@ -542,11 +550,13 @@ Start by reading in the structural and memory data
 
 ```{r warning=FALSE}
 oslo_struct <- read_delim("/tsd/p274/data/durable/projects/p027-cr_bm/aaic/oslo.csv",
-                                            delim = ";", escape_double = FALSE, trim_ws = TRUE, show_col_types = FALSE) 
+  delim = ";", escape_double = FALSE, trim_ws = TRUE, show_col_types = FALSE
+)
 
 # Rename variables
 oslo_struct <- oslo_struct %>%
-  rename(timepoint = "SubjectRound_id",
+  rename(
+    timepoint = "SubjectRound_id",
     id = "Subject_id",
     age = "Age",
     sex = "Sex",
@@ -559,19 +569,20 @@ oslo_struct <- oslo_struct %>%
   )
 
 # Subset oslo_func to only include necessary data
-columns_to_keep <- c("timepoint",
-                     "id",
-                     "age",
-                     "sex",
-                     "HIP_left",
-                     "HIP_right",
-                     "CVLT_A_Total",
-                     "CVLT_5min_Free",
-                     "CVLT_30min_Free",
-                     "edu",
-                     "scanner",
-                     "mmse",
-                     "icv"
+columns_to_keep <- c(
+  "timepoint",
+  "id",
+  "age",
+  "sex",
+  "HIP_left",
+  "HIP_right",
+  "CVLT_A_Total",
+  "CVLT_5min_Free",
+  "CVLT_30min_Free",
+  "edu",
+  "scanner",
+  "mmse",
+  "icv"
 )
 
 oslo_struct <- select(oslo_struct, all_of(columns_to_keep))
@@ -591,21 +602,20 @@ oslo_struct <- oslo_struct %>%
 
 # Drop participants with scanner ousPrisma - unclear with they are in this df - and drop participants without MRI
 oslo_struct <- oslo_struct %>%
-  filter(!(scanner == 'ousPrisma' | scanner == 'noMRI'))
-
-
+  filter(!(scanner == "ousPrisma" | scanner == "noMRI"))
 ```
 
 Readin Oslo functional data and merge dfs
 
 ```{r warning=FALSE}
-oslo_func <- read_delim("/tsd/p274/data/durable/projects/p027-cr_bm/UiO/results/FC_Shirer90x90_Fisher-z-trans.csv", 
-                                            delim = ",", escape_double = FALSE, trim_ws = TRUE, show_col_types = FALSE)
+oslo_func <- read_delim("/tsd/p274/data/durable/projects/p027-cr_bm/UiO/results/FC_Shirer90x90_Fisher-z-trans.csv",
+  delim = ",", escape_double = FALSE, trim_ws = TRUE, show_col_types = FALSE
+)
 
 # Rename id
 oslo_func <- oslo_func %>%
   rename(id = "...1")
-         
+
 # Add a new column to specify the timepoint
 oslo_func <- oslo_func %>%
   mutate(timepoint = as.integer(str_extract(id, "([_1-6])$")))
@@ -615,23 +625,26 @@ oslo_func <- oslo_func %>%
   mutate(id = paste0("oslo_", gsub("_[1-7]$", "", id)))
 
 # Subset oslo_func to only include necessary data
-selected_cols <- c("id", "timepoint", 
-                   names(oslo_func)[grepl("^(dDMN|vDMN).*-(vDMN|dDMN)", names(oslo_func))], 
-                   names(oslo_func)[grepl("^(RECN|LECN).*-(RECN|LECN)", names(oslo_func))],
-                   names(betula_func)[grepl("^(AS).*-(AS)", names(betula_func))])
+selected_cols <- c(
+  "id", "timepoint",
+  names(oslo_func)[grepl("^(dDMN|vDMN).*-(vDMN|dDMN)", names(oslo_func))],
+  names(oslo_func)[grepl("^(RECN|LECN).*-(RECN|LECN)", names(oslo_func))],
+  names(betula_func)[grepl("^(AS).*-(AS)", names(betula_func))]
+)
 
 selected_cols <- unique(selected_cols) # because some fc connections are in multiple networks
 oslo_func <- oslo_func[, selected_cols]
 
-oslo_func_scanners <- read_delim("/tsd/p274/data/durable/projects/p027-cr_bm/UiO/results/subs.txt", 
-                                            delim = " ", escape_double = FALSE, trim_ws = TRUE, show_col_types = FALSE, col_names = FALSE)
+oslo_func_scanners <- read_delim("/tsd/p274/data/durable/projects/p027-cr_bm/UiO/results/subs.txt",
+  delim = " ", escape_double = FALSE, trim_ws = TRUE, show_col_types = FALSE, col_names = FALSE
+)
 
 oslo_func_scanners <- oslo_func_scanners %>%
   rename(
     id = "X2",
     timepoint = "X3",
     scanner = "X8"
-    )
+  )
 
 # Rename the IDs
 oslo_func_scanners <- oslo_func_scanners %>%
@@ -642,27 +655,27 @@ oslo_func_scanners <- oslo_func_scanners %>%
   mutate(scanner = ifelse(scanner %in% c("Avanto", "Skyra"), paste0("ous", scanner), scanner))
 
 # Subset oslo_func_scanner to only include necessary data
-columns_to_keep_scanner <- c("timepoint", 
-                     "id",
-                     "scanner"
+columns_to_keep_scanner <- c(
+  "timepoint",
+  "id",
+  "scanner"
 )
 
 oslo_func_scanners <- select(oslo_func_scanners, all_of(columns_to_keep_scanner))
 
-# Merge the functional data 
+# Merge the functional data
 oslo_func2 <- merge(oslo_func_scanners, oslo_func, by = c("id", "timepoint"), all = TRUE) # This keeps all participants so need to drop NAs
 
 
 # Merge Oslo dfs into one
 oslo_df <- merge(oslo_struct, oslo_func2, by = c("id", "timepoint", "scanner"), all = TRUE) # This keeps all participants so need to drop NAs
-
 ```
 
 Create a variable to consider the multiple MRI scanners and convert to wide format
 
 ```{r warning=FALSE}
 # Edit the df to remove any timepoints where someone was scanned on a different scanner
-# Some people have a different scanner for one tp so this removes that tp 
+# Some people have a different scanner for one tp so this removes that tp
 
 # Step 1: Identify instances where a person has two scanner values at one timepoint
 dupes <- oslo_df %>%
@@ -674,7 +687,7 @@ dupes <- oslo_df %>%
 # and select the scanner with functional data if the functional exists (this should be Skyra for all)
 filtered_dupes <- dupes %>%
   group_by(id, timepoint) %>%
-  arrange(desc(!is.na('dDMN_midCC-dDMN_R_hipp')), desc(scanner == 'ousSkyra')) %>%
+  arrange(desc(!is.na("dDMN_midCC-dDMN_R_hipp")), desc(scanner == "ousSkyra")) %>%
   slice(1) %>%
   ungroup()
 
@@ -737,10 +750,10 @@ oslo_df <- oslo_df %>%
   select(-starts_with("timepoint"))
 
 # Make a df to check that the scanners are being selected correctly
-oslo_df_scanners <- select(oslo_df, 
-                           id, scanner.1, scanner.2, scanner.3, scanner.4, scanner.5, scanner.6)
-
-
+oslo_df_scanners <- select(
+  oslo_df,
+  id, scanner.1, scanner.2, scanner.3, scanner.4, scanner.5, scanner.6
+)
 ```
 
 Now define the baseline values for all participants. This code chooses the first non-NA instance of the variable as baseline because some people do not have data at timepoint 1 and instead have their first data point at timepoint 2 or 3
@@ -753,19 +766,18 @@ get_first_non_na <- function(x) {
 # This only needs to be applied to the cohorts with more than 2 timepoints of data. It is already defined for the other cohorts
 
 # Apply the function to each row
-oslo_df$CVLT_A_Total_baseline <- apply(oslo_df[,c(paste0("CVLT_A_Total.", 1:6))], 1, get_first_non_na)
-oslo_df$CVLT_5min_Free_baseline <- apply(oslo_df[,c(paste0("CVLT_5min_Free.", 1:6))], 1, get_first_non_na)
-oslo_df$CVLT_30min_Free_baseline <- apply(oslo_df[,c(paste0("CVLT_30min_Free.", 1:6))], 1, get_first_non_na)
+oslo_df$CVLT_A_Total_baseline <- apply(oslo_df[, c(paste0("CVLT_A_Total.", 1:6))], 1, get_first_non_na)
+oslo_df$CVLT_5min_Free_baseline <- apply(oslo_df[, c(paste0("CVLT_5min_Free.", 1:6))], 1, get_first_non_na)
+oslo_df$CVLT_30min_Free_baseline <- apply(oslo_df[, c(paste0("CVLT_30min_Free.", 1:6))], 1, get_first_non_na)
 
-betula_df$CuedRecall_sptcrc_baseline <- apply(betula_df[,c(paste0("SPT_VTCategoryCuedRecall::sptcrc.", 1:2))], 1, get_first_non_na)
-betula_df$CuedRecall_vtcrc_baseline <- apply(betula_df[,c(paste0("SPT_VTCategoryCuedRecall::vtcrc.", 1:2))], 1, get_first_non_na)
-betula_df$FreeRecall_sptb_baseline <- apply(betula_df[,c(paste0("SPT_VTFreeRecall::sptb.", 1:2))], 1, get_first_non_na)
-betula_df$FreeRecall_vtb_baseline <- apply(betula_df[,c(paste0("SPT_VTFreeRecall::vtb.", 1:2))], 1, get_first_non_na)
+betula_df$CuedRecall_sptcrc_baseline <- apply(betula_df[, c(paste0("SPT_VTCategoryCuedRecall::sptcrc.", 1:2))], 1, get_first_non_na)
+betula_df$CuedRecall_vtcrc_baseline <- apply(betula_df[, c(paste0("SPT_VTCategoryCuedRecall::vtcrc.", 1:2))], 1, get_first_non_na)
+betula_df$FreeRecall_sptb_baseline <- apply(betula_df[, c(paste0("SPT_VTFreeRecall::sptb.", 1:2))], 1, get_first_non_na)
+betula_df$FreeRecall_vtb_baseline <- apply(betula_df[, c(paste0("SPT_VTFreeRecall::vtb.", 1:2))], 1, get_first_non_na)
 
-waha_df$Verbal_memory_RAVLT_delayed_baseline <- apply(waha_df[,c(paste0("Verbal_Memory_RAVLT_delayed.", 1:3))], 1, get_first_non_na)
-waha_df$Verbal_memory_RAVLT_total_baseline <- apply(waha_df[,c(paste0("Verbal_memory_RAVLT_Total.", 1:3))], 1, get_first_non_na)
-waha_df$Visual_Memory_ROCF_Imm_baseline <- apply(waha_df[,c(paste0("Visual_Memory_ROCF_Imm.", 1:3))], 1, get_first_non_na)
-
+waha_df$Verbal_memory_RAVLT_delayed_baseline <- apply(waha_df[, c(paste0("Verbal_Memory_RAVLT_delayed.", 1:3))], 1, get_first_non_na)
+waha_df$Verbal_memory_RAVLT_total_baseline <- apply(waha_df[, c(paste0("Verbal_memory_RAVLT_Total.", 1:3))], 1, get_first_non_na)
+waha_df$Visual_Memory_ROCF_Imm_baseline <- apply(waha_df[, c(paste0("Visual_Memory_ROCF_Imm.", 1:3))], 1, get_first_non_na)
 ```
 
 Now find the hippocampus and age baseline values
@@ -781,7 +793,7 @@ create_columns <- function(df) {
     # Get the indices of the non-NA values for HIP_total and age
     hip_indices <- which(!is.na(df[i, grep("HIP_total", names(df))]))
     age_indices <- which(!is.na(df[i, grep("age", names(df))]))
-    
+
     # If there's at least one non-NA value, assign it to the baseline column
     if (length(hip_indices) >= 1) {
       df$HIP_total_baseline[i] <- df[i, paste0("HIP_total.", hip_indices[1])]
@@ -794,13 +806,13 @@ create_columns <- function(df) {
 }
 
 
-# Apply the function 
+# Apply the function
 oslo_df <- create_columns(oslo_df)
 betula_df <- create_columns(betula_df)
 waha_df <- create_columns(waha_df)
 cobra_df <- create_columns(cobra_df)
 
-baseline_vars  <- c("HIP_total_baseline", "age_baseline")
+baseline_vars <- c("HIP_total_baseline", "age_baseline")
 
 betula_df <- betula_df %>%
   mutate_at(vars(baseline_vars), as.numeric)
@@ -825,7 +837,6 @@ write.csv(waha_df, file = "/tsd/p274/data/durable/projects/p027-cr_bm/Clean Data
 write.csv(cobra_df, file = "/tsd/p274/data/durable/projects/p027-cr_bm/Clean Data All Cohorts/Wide Format/Cobra clean raw data wide.csv")
 
 write.csv(oslo_df, file = "/tsd/p274/data/durable/projects/p027-cr_bm/Clean Data All Cohorts/Wide Format/Oslo clean raw data wide.csv")
-
 ```
 
 Create a study variable before merging the df
@@ -843,7 +854,7 @@ determine_scanner_type <- function(scanners) {
   } else if ("ousSkyra" %in% scanners) {
     return("oslo_skyra")
   } else {
-    return(NA_character_)  # Return NA if no scanners
+    return(NA_character_) # Return NA if no scanners
   }
 }
 
@@ -866,12 +877,14 @@ merged_cohorts <- bind_rows(waha_df, cobra_df, betula_df, oslo_df)
 filtered_df <- merged_cohorts %>% select(-contains(c("RECN", "DMN", "LECN", "SN")))
 
 # Remove columns for which data should not be removed if participants are outside of 3 SD
-exclude_cols <- c("id", "sex", "mmse", "edu", "study", 
-                  "age_baseline",
-                  paste0("HIP_left.", 1:6), # Removing this and using only HIP_total 
-                  paste0("HIP_right.", 1:6),
-                  paste0("age.", 1:6),
-                  paste0("scanner.", 1:6))
+exclude_cols <- c(
+  "id", "sex", "mmse", "edu", "study",
+  "age_baseline",
+  paste0("HIP_left.", 1:6), # Removing this and using only HIP_total
+  paste0("HIP_right.", 1:6),
+  paste0("age.", 1:6),
+  paste0("scanner.", 1:6)
+)
 
 # Define a function to replace values outside 3 SD with NA
 replace_outliers_with_na <- function(x) {
@@ -881,7 +894,7 @@ replace_outliers_with_na <- function(x) {
   return(x)
 }
 
-# Applying the function 
+# Applying the function
 cleaned_data <- merged_cohorts %>%
   group_by(study) %>% # Group by study so that 3 SD is calculated separately for each
   mutate(across(
@@ -889,35 +902,36 @@ cleaned_data <- merged_cohorts %>%
     .fns = ~ replace_outliers_with_na(.)
   )) %>%
   ungroup()
-
-
 ```
 
 
 ```{r}
 # Create a new variable for study that does not consider scanner
-cleaned_data<-cleaned_data%>%
+cleaned_data <- cleaned_data %>%
   mutate(cohort = ifelse(study == "oslo_avanto", "Oslo",
-                        ifelse(study == "oslo_skyra", "Oslo",
-                               ifelse(study == "oslo_mix", "Oslo",
-                                      ifelse(study == "betula", "Betula",
-                                             ifelse(study == "waha", "WAHA",
-                                                    ifelse(study == "cobra", "Cobra", NA))))))
-  )
+    ifelse(study == "oslo_skyra", "Oslo",
+      ifelse(study == "oslo_mix", "Oslo",
+        ifelse(study == "betula", "Betula",
+          ifelse(study == "waha", "WAHA",
+            ifelse(study == "cobra", "Cobra", NA)
+          )
+        )
+      )
+    )
+  ))
 
-# Split the dfs again to save them 
-oslo_df <- cleaned_data %>% 
+# Split the dfs again to save them
+oslo_df <- cleaned_data %>%
   filter(cohort == "Oslo")
 
-betula_df <- cleaned_data %>% 
+betula_df <- cleaned_data %>%
   filter(cohort == "Betula")
 
-waha_df <- cleaned_data %>% 
+waha_df <- cleaned_data %>%
   filter(cohort == "WAHA")
 
-cobra_df <- cleaned_data %>% 
+cobra_df <- cleaned_data %>%
   filter(cohort == "Cobra")
-
 ``` 
 
 Write new CSVs with no outliers
