@@ -11,5 +11,7 @@
 !*.R
 !*.Rmd
 
-# Except for this script
+# Except for these scripts
 cleaning BBHI data.ipynb
+bbhi mci script.R
+crbm grid figure.R
