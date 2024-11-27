@@ -1,0 +1,270 @@
+---
+title: "Analysis"
+output: html_document
+date: "2024-04-30"
+---
+```{r setup, include=FALSE}
+if (!require("ggplot2")) {
+  install.packages("ggplot2")
+  require("ggplot2")
+}
+if (!require("dplyr")) {
+  install.packages("dplyr")
+  require("dplyr")
+}
+if (!require("psych")) {
+  install.packages("psych")
+  require("psych")
+}
+if (!require("stringr")) {
+  install.packages("stringr")
+  require("stringr")
+}
+if (!require("tidyr")) {
+  install.packages("tidyr")
+  require("tidyr")
+}
+if (!require("scales")) {
+  install.packages("scales")
+  require("scales")
+}
+if (!require("mgcv")) {
+  install.packages("mgcv")
+  require("mgcv")
+}
+if (!require("ggsignif")) {
+  install.packages("ggsignif")
+  require("ggsignif")
+}
+
+library(readr)
+```
+
+Start by reading in the clean data in wide format 
+```{r warning=FALSE}
+clean_data <- read.csv("/tsd/p274/data/durable/projects/p027-cr_bm/Clean Data All Cohorts/Wide Format/Merged cohorts analysed data wide.csv")
+```
+
+Visualize the HC and memory data
+```{r warning=FALSE}
+# Look at memory slopes
+ggplot(clean_data, aes(x = memory_slopes)) +
+  geom_histogram()
+
+memory_normality <- shapiro.test(clean_data$memory_slopes)
+print(memory_normality)
+
+# Look at hippocampus slopes
+ggplot(clean_data, aes(x = hc_slopes)) +
+  geom_histogram()
+
+hc_normality <- shapiro.test(clean_data$hc_slopes)
+print(hc_normality)
+
+# Visualize the FC data
+ggplot(clean_data, aes(x = dmn_slopes)) +
+  geom_histogram()
+
+dmn_normality <- shapiro.test(clean_data$dmn_slopes)
+print(dmn_normality)
+```
+Fit residual models to be able to use in the figures throughout the results section
+```{r}
+# In order to be able to save these models, the NAs have to be removed so I made a df for each type to remove the data and then can merge back into clean_df
+
+# Remove NAs first
+fc_res_data <- clean_data %>%
+  filter(!(is.na(dmn_slopes)))
+
+hc_res_data <- clean_data %>%
+  filter(!(is.na(hc_slopes)))
+
+hc_bl_res_data <- clean_data %>%
+  filter(!is.na(hc_slopes) & !is.na(edu) & !is.na(sex))
+
+mem_res_data <- clean_data %>%
+  filter(!(is.na(memory_slopes)))
+
+mem_bl_res_data <- clean_data %>%
+  filter(!is.na(memory_slopes) & !is.na(edu) & !is.na(sex))
+
+# Fit a linear model including cohort as a covariate
+residual_model_dmn <- lm(dmn_slopes ~ study, data = fc_res_data)
+residual_model_ec <- lm(ec_slopes ~ study, data = fc_res_data)
+residual_model_sn <- lm(sn_slopes ~ study, data = fc_res_data)
+residual_model_mem <- lm(memory_slopes ~ study, data = mem_res_data)
+residual_model_bl_mem <- lm(memory_baseline ~ study, data = mem_bl_res_data)
+residual_model_fu_mem <- lm(memory_followup ~ study, data = mem_bl_res_data)
+residual_model_hc <- lm(hc_slopes ~ study, data = hc_res_data)
+residual_model_bl_hc <- lm(adj_HIP_total_baseline ~ study, data = hc_bl_res_data)
+residual_model_fu_hc <- lm(adj_HIP_total_followup ~ study, data = hc_bl_res_data)
+residual_model_bl_dmn <- lm(dmn_baseline ~ study, data = fc_res_data)
+residual_model_fu_dmn <- lm(dmn_followup ~ study, data = fc_res_data)
+residual_model_fu_dmn <- lm(dmn_followup ~ study, data = fc_res_data)
+residual_model_edu <- lm(edu ~ study, data = hc_bl_res_data)
+
+
+# Extract residuals
+fc_res_data$res_dmn_slopes <- residuals(residual_model_dmn)
+fc_res_data$res_ec_slopes <- residuals(residual_model_ec)
+fc_res_data$res_sn_slopes <- residuals(residual_model_sn)
+mem_res_data$res_mem_slopes <- residuals(residual_model_mem)
+mem_bl_res_data$res_mem_bl <- residuals(residual_model_bl_mem)
+mem_bl_res_data$res_mem_fu <- residuals(residual_model_fu_mem)
+hc_res_data$res_hc_slopes <- residuals(residual_model_hc)
+hc_bl_res_data$res_hc_bl <- residuals(residual_model_bl_hc)
+hc_bl_res_data$res_hc_fu <- residuals(residual_model_fu_hc)
+fc_res_data$res_dmn_bl <- residuals(residual_model_bl_dmn)
+fc_res_data$res_dmn_fu <- residuals(residual_model_fu_dmn)
+hc_bl_res_data$res_edu <- residuals(residual_model_edu)
+
+# Filter dfs to put back in
+fc_res_data <- fc_res_data %>%
+  select(id, res_dmn_slopes, res_sn_slopes, res_ec_slopes, res_dmn_bl, res_dmn_fu)
+
+hc_res_data <- hc_res_data %>%
+  select(id, res_hc_slopes)
+
+mem_bl_res_data <- mem_bl_res_data %>%
+  select(id, res_mem_bl, res_mem_fu)
+
+mem_res_data <- mem_res_data %>%
+  select(id, res_mem_slopes)
+
+hc_bl_res_data <- hc_bl_res_data %>%
+  select(id, res_hc_bl, res_hc_fu, res_edu)
+
+emhc_data <- merge(fc_res_data, hc_res_data, by = c("id"), all = TRUE)
+emhc_data <- merge(emhc_data, mem_res_data, by = c("id"), all = TRUE)
+emhc_data <- merge(emhc_data, hc_bl_res_data, by = c("id"), all = TRUE)
+emhc_data <- merge(emhc_data, mem_bl_res_data, by = c("id"), all = TRUE)
+emhc_data <- merge(clean_data, emhc_data, by = c("id"), all = TRUE)
+```
+
+Using the new formula to calculate a BM continuous variable 
+```{r}
+# First create a scaled version of the HC and memory annual change variables using the residuals
+emhc_data <- emhc_data %>%
+  mutate(
+    res_hc_slopes_scaled = res_hc_slopes / abs(min(res_hc_slopes)),
+    res_mem_slopes_scaled = res_mem_slopes / abs(max(res_mem_slopes))
+  )
+
+# Define the function to calculate the distance from the data point to the point (1,1)
+distance_to_bm_point <- function(y, x) {
+  # Calculate the shortest distance from the data point to (1,1)
+  distance <- sqrt((x - 1)^2 + (y - 1)^2)
+
+  return(distance)
+}
+
+emhc_data <- emhc_data %>%
+  mutate(dist_to_bm_point = distance_to_bm_point(res_mem_slopes_scaled, res_hc_slopes_scaled))
+
+# Define the function to calculate the distance from the data point to the point (1,1)
+distance_to_bm_line <- function(y, x) {
+  # Calculate the intersection point (projection of the point onto the line x = y)
+  intersection_x <- (x + y) / 2
+  intersection_y <- intersection_x
+
+  # Calculate the distance from the point (x, y) to the projection point
+  distance <- sqrt((intersection_x - x)^2 + (intersection_y - y)^2)
+
+  return(distance)
+}
+
+emhc_data <- emhc_data %>%
+  mutate(dist_to_bm_line = distance_to_bm_line(res_mem_slopes_scaled, res_hc_slopes_scaled))
+
+emhc_data <- emhc_data %>%
+  mutate(dist_to_double_bm = dist_to_bm_line + dist_to_bm_point)
+```
+
+Descriptive stats BM
+```{r}
+describe(emhc_data$dist_to_double_bm)
+shapiro.test(emhc_data$dist_to_double_bm)
+ggplot(emhc_data, aes(x = dist_to_double_bm)) +
+  geom_histogram(fill = "lightpink", color = "black", binwidth = 0.1)
+```
+
+Now create the CR continuous variable 
+```{r}
+# Define the function to calculate the distance from the data point to the point (1,1)
+distance_to_cr_point <- function(y, x) {
+  # Calculate the shortest distance from the data point to (1,1)
+  distance <- sqrt((x + 1)^2 + (y - 1)^2)
+
+  return(distance)
+}
+
+
+emhc_data <- emhc_data %>%
+  mutate(dist_to_cr_point = distance_to_cr_point(res_mem_slopes_scaled, res_hc_slopes_scaled))
+
+# Define the function to calculate the distance from to the line x = -y
+distance_to_cr_line <- function(y, x) {
+  # Calculate the intersection point (projection of the point onto the line x = -y)
+  intersection_x <- (x - y) / 2
+  intersection_y <- -(intersection_x)
+
+  # Calculate the distance from the point (x, y) to the intersection point
+  distance <- sqrt((intersection_x - x)^2 + (intersection_y - y)^2)
+
+  return(distance)
+}
+
+emhc_data <- emhc_data %>%
+  mutate(dist_to_cr_line = distance_to_cr_line(res_mem_slopes_scaled, res_hc_slopes_scaled))
+
+
+emhc_data <- emhc_data %>%
+  mutate(dist_to_double_cr = dist_to_cr_line + dist_to_cr_point)
+```
+
+
+Descriptive stats CR
+```{r}
+describe(emhc_data$dist_to_double_cr)
+shapiro.test(emhc_data$dist_to_double_cr)
+ggplot(emhc_data, aes(x = dist_to_double_cr)) +
+  geom_histogram(fill = "lightpink", color = "black", binwidth = 0.1)
+```
+
+Now make an index to represent whether someone is more on a BM or CR path and how far along the path they are. Start by inversing BM and CR so that high values are good
+```{r}
+# Define function to reverse the CR / BM variables using their possible min and max values
+reverse_values <- function(values) {
+  max_value <- 3.414214
+  min_value <- 0
+  reversed <- (max_value + min_value) - values
+  return(reversed)
+}
+
+# Reverse the bm and cr values
+emhc_data$reverse_bm <- reverse_values(emhc_data$dist_to_double_bm)
+emhc_data$reverse_cr <- reverse_values(emhc_data$dist_to_double_cr)
+
+# Check that the output is ok
+reversed <- emhc_data %>%
+  select(id, reverse_bm, dist_to_double_bm, reverse_cr, dist_to_double_cr)
+```
+
+Now take the reversed variables to make the index
+```{r}
+# Classify as closer to BM or CR and calculate the indices
+emhc_data <- emhc_data %>%
+  mutate(
+    closer_to = ifelse(reverse_bm > reverse_cr, "BM", "CR"),
+    index = ifelse(closer_to == "BM", (reverse_bm / reverse_cr) - 1, (-(reverse_cr / reverse_bm)) + 1) # need to -1 or +1 to make the axis center around 0
+  )
+
+# Check that everything looks ok
+index_df <- emhc_data %>%
+  select(id, reverse_cr, dist_to_double_cr, reverse_bm, dist_to_double_bm, closer_to, index)
+```
+
+Now write the data frames as CSVs
+```{r}
+write.csv(emhc_data, file = "/tsd/p274/data/durable/projects/p027-cr_bm/Clean Data All Cohorts/Wide Format/Analysed data.csv")
+```

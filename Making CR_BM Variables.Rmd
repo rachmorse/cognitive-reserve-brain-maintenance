@@ -1,0 +1,274 @@
+---
+title: "CRBM Variables"
+output: html_document
+date: "2024-10-28"
+---
+
+# Cognitive Reserve and Brain Maintenance Variables
+
+This document provides instructions and code for calculating cognitive reserve and brain maintenance variables based on the annual changes in a composite episodic memory variable and hippocampal volume. While this document is focused on hippocampal volume, the code can be adapted to incorporate other measures (e.g., cingulate cortex thickness or a composite measure). It is important that any new measure captures longitudinal changes in brain morphology to ensure it accurately represents brain maintenance.
+
+## Recreating Cognitive Reserve and Brain Maintenance Variables
+
+To recreate these variables using episodic memory and hippocampal volume, follow the provided code below. If you are using different measures, please modify the code accordingly to create an updated version of the cognitive reserve and brain maintenance variables.
+
+### Data Requirements
+
+- At least two time points of data
+- Episodic memory variable or multiple variables
+- Brain structure variable (e.g., hippocampal volume)
+- Participant ages
+
+```{r setup, include=FALSE}
+if (!require("ggplot2")) {
+  install.packages("ggplot2")
+  require("ggplot2")
+}
+if (!require("dplyr")) {
+  install.packages("dplyr")
+  require("dplyr")
+}
+if (!require("patchwork")) {
+  install.packages("patchwork")
+  require("patchwork")
+}
+if (!require("readr")) {
+  install.packages("readr")
+  require("readr")
+}
+```
+
+### Step 1: Load Your Data
+
+Begin by importing your dataset. Ensure the data contains either:
+
+1. Episodic memory variables, hippocampal volume, timepoints, and age
+2. Previously calculated episodic memory composite (scaled by baseline) and episodic memory slopes plus hippocampal slopes
+
+It is best to read in your data as long format if using the first variables and in wide format if using the second variables.
+
+```{r warning=FALSE}
+data <- read.csv("your data.csv")
+```
+
+### Step 2a: Calculate Slopes (if needed)
+
+If your data are in long format and you have not yet calculated a composite episodic memory variable or each variable's slopes, use the following code `{r calculate slopes}` to generate these. Customize your variable names and specify your number of timepoints accordingly. 
+
+```{r calculate slopes}
+# Calculate Slopes: Insert variable names and timepoint number
+
+# Define your memory variables
+memory_vars <- c("memory variable 1", "memory variable 2") # Add more as needed
+
+# Specify the number of timepoints
+n_timepoints <- 6
+
+# Rename your variables directly
+data <- data %>%
+  rename(
+    hippocampus_volume = "your hippocampus volume variable",
+    timepoint = "your timepoint variable", # This variable needs to be numeric (e.g. timepoint = 1 not timepoint = R01)
+    id = "your id variable",
+    age = "your age variable"
+  )
+
+# Optionally, uncomment to filter to only include the needed variables for this analysis
+# data <- data %>% select(id, age, timepoint, hippocampus_volume, starts_with("memory_var_")) # Match `memory_vars`
+
+# Main processing function
+process_data <- function(data, n_timepoints, mem_vars) {
+  # Convert data to wide format
+  data_wide <- data
+  for (i in 1:n_timepoints) {
+    suffix <- paste0("_", i)
+    timepoint_data <- data %>%
+      filter(timepoint == i) %>%
+      rename_with(~ paste0(.x, suffix), -c(id))
+
+    if (i == 1) {
+      data_wide <- timepoint_data
+    } else {
+      data_wide <- full_join(data_wide, timepoint_data, by = "id")
+    }
+  }
+
+  # Remove timepoint column
+  data_wide <- data_wide %>% select(-starts_with("timepoint_"))
+
+  # Function to find the first non-NA value
+  get_first_non_na <- function(x) {
+    non_na_values <- x[!is.na(x)]
+    if (length(non_na_values) > 0) {
+      return(non_na_values[1])
+    } else {
+      return(NA)
+    }
+  }
+
+  # Generate baseline variables
+  for (j in seq_along(mem_vars)) {
+    mem_var <- mem_vars[j]
+    baseline_name <- paste0(mem_var, "_baseline")
+    data_wide[[baseline_name]] <- apply(
+      data_wide[, paste0(mem_var, "_", 1:n_timepoints), drop = FALSE],
+      1,
+      get_first_non_na
+    )
+  }
+
+  # Scale memory variables by baseline (timepoint 1)
+  for (i in 1:n_timepoints) {
+    for (j in seq_along(mem_vars)) {
+      mem_var <- mem_vars[j]
+      base_col_name <- paste0(mem_var, "_baseline")
+
+      # Current timepoint memory variable column
+      col_name <- paste0(mem_var, "_", i)
+
+      # Check if column exists
+      if (col_name %in% names(data_wide)) {
+        # Calculate baseline mean and SD
+        baseline_mean <- mean(data_wide[[base_col_name]], na.rm = TRUE)
+        baseline_sd <- sd(data_wide[[base_col_name]], na.rm = TRUE)
+
+        # Scale the variable using baseline mean and SD
+        scaled_values <- (data_wide[[col_name]] - baseline_mean) / baseline_sd
+        data_wide[[paste0("sc_", col_name)]] <- as.numeric(scaled_values) # Convert to numeric
+      } else {
+        cat("Column not found:", col_name, "\n")
+      }
+    }
+  }
+
+  # Calculate memory composites
+  for (i in 1:n_timepoints) {
+    mem_cols <- paste0("sc_", mem_vars, "_", i)
+    data_wide <- data_wide %>%
+      mutate(!!paste0("memory_", i) := rowMeans(
+        select(., any_of(mem_cols)),
+        na.rm = TRUE
+      ))
+  }
+
+  # Calculate slopes
+  for (i in 1:nrow(data_wide)) {
+    em_data <- data_wide[i, paste0("memory_", 1:n_timepoints)]
+    hc_data <- data_wide[i, paste0("hippocampus_volume_", 1:n_timepoints)]
+    age <- data_wide[i, paste0("age_", 1:n_timepoints)]
+
+    if (sum(!is.na(em_data)) > 1 && sum(!is.na(hc_data)) > 1) {
+      data_wide[i, "memory_slopes"] <- lm(em_data[!is.na(em_data)] ~ age[!is.na(em_data)])$coeff[2]
+      data_wide[i, "hippocampus_slopes"] <- lm(hc_data[!is.na(hc_data)] ~ age[!is.na(hc_data)])$coeff[2]
+    }
+  }
+
+  data_wide
+}
+
+# Execute the process on your data
+data <- process_data(data, n_timepoints, memory_vars)
+```
+
+### Step 2b: Define Relevant Variables (if needed)
+
+For those with pre-calculated hippocampus and memory slopes, make sure your data aligns with the naming conventions in this script. Your data should already be in wide format.
+
+```{r define variables}
+# Define your variables
+data <- data %>%
+  rename(
+    hippocampus_slopes = "hippocampus slopes variable",
+    memory_slopes = "memory slopes variable"
+  )
+```
+
+### Step 3: Further Processing
+
+With your standard variable names and required calculations complete, you can run the rest of this code without needed to make any more modifications. 
+
+This creates a scaled version of the hippocampus and memory annual change variables.
+
+```{r}
+data <- data %>%
+  mutate(
+    hippocampus_slopes_scaled = hippocampus_slopes / max(abs(min(hippocampus_slopes, na.rm = TRUE)), abs(max(hippocampus_slopes, na.rm = TRUE))),
+    memory_slopes_scaled = memory_slopes / max(abs(min(memory_slopes, na.rm = TRUE)), abs(max(memory_slopes, na.rm = TRUE)))
+  )
+```
+
+Then this creates the brain maintenance (BM) variable.
+
+```{r}
+# Define a function to calculate the distance from a given data point to the point (1,1)
+distance_to_bm_point <- function(y, x) {
+  # Calculate the shortest distance from the data point to (1,1)
+  distance <- sqrt((x - 1)^2 + (y - 1)^2)
+
+  return(distance)
+}
+
+# Define a function to calculate the distance from a given data point to the point (1,1)
+distance_to_bm_line <- function(y, x) {
+  # Calculate the intersection point (projection of the point onto the line x = y)
+  intersection_x <- (x + y) / 2
+  intersection_y <- intersection_x
+
+  # Calculate the distance from the point (x, y) to the projection point
+  distance <- sqrt((intersection_x - x)^2 + (intersection_y - y)^2)
+
+  return(distance)
+}
+
+# Calculate BM variable
+data <- data %>%
+  mutate(
+    dist_to_bm_point = distance_to_bm_point(memory_slopes_scaled, hippocampus_slopes_scaled),
+    dist_to_bm_line = distance_to_bm_line(memory_slopes_scaled, hippocampus_slopes_scaled),
+    brain_maintenance = 3.414214 - (dist_to_bm_point + dist_to_bm_line)
+  )
+```
+
+Next, this creates the cognitive reserve (CR) variable.
+
+```{r}
+# Define a function to calculate the distance from the data point to the point (1,1)
+distance_to_cr_point <- function(y, x) {
+  # Calculate the shortest distance from the data point to (1,1)
+  distance <- sqrt((x + 1)^2 + (y - 1)^2)
+
+  return(distance)
+}
+
+# Define a function to calculate the distance from to the line x = -y
+distance_to_cr_line <- function(y, x) {
+  # Calculate the intersection point (projection of the point onto the line x = -y)
+  intersection_x <- (x - y) / 2
+  intersection_y <- -(intersection_x)
+
+  # Calculate the distance from the point (x, y) to the intersection point
+  distance <- sqrt((intersection_x - x)^2 + (intersection_y - y)^2)
+
+  return(distance)
+}
+
+# Calculate CR variable
+data <- data %>%
+  mutate(
+    dist_to_cr_point = distance_to_cr_point(memory_slopes_scaled, hippocampus_slopes_scaled),
+    dist_to_cr_line = distance_to_cr_line(memory_slopes_scaled, hippocampus_slopes_scaled),
+    cognitive_reserve = 3.414214 - (dist_to_cr_point + dist_to_cr_line)
+  )
+```
+
+Lastly, this makes an index to represent whether someone is aging more brain maintenance or cognitive reserve like and calculates their level of resilience (or their total amount of brain maintenance + cognitive reserve).
+
+```{r}
+# Classify as closer to BM or CR and calculate the indices
+data <- data %>%
+  mutate(
+    closer_to = ifelse(brain_maintenance > cognitive_reserve, "Brain Maintenance", "Cognitive Reserve"),
+    index = ifelse(closer_to == "Brain Maintenance", (brain_maintenance / cognitive_reserve) - 1, (-(cognitive_reserve / brain_maintenance)) + 1), # need to -1 or +1 to make the axis center around 0
+    resilience = abs(brain_maintenance) + abs(cognitive_reserve)
+  )
+```

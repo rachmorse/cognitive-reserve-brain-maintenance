@@ -3,13 +3,14 @@ if (!require("dplyr")) {
   install.packages("dplyr")
   require("dplyr")
 }
-
 if (!require("compare")) {
   install.packages("compare")
   require("compare")
 }
-
-library(readr)
+if (!require("readr")) {
+  install.packages("readr")
+  require("readr")
+}
 
 # Read in data that needs to be z-transformed
 waha_fc <- read_delim("/tsd/p274/data/durable/projects/p027-cr_bm/rsFC/WAHAFiltAndResid.csv",
@@ -20,12 +21,12 @@ waha_fc <- read_delim("/tsd/p274/data/durable/projects/p027-cr_bm/rsFC/WAHAFiltA
 cobra_z <- read_csv("/tsd/p274/data/durable/projects/p027-cr_bm/Umu/FC_shirer_CobraBetula/FC_Shirer90x90_Fisher-z-trans_FiltAndResid_Cobra_smallBB.csv")
 cobra_no_z <- read_csv("/tsd/p274/data/durable/projects/p027-cr_bm/Umu/FC_shirer_CobraBetula/FC_Shirer90x90_no-Fisher-z-trans_FiltAndResid_Cobra_smallBB.csv")
 
-# Define the Fisher Z transformation function
+# Define the Fisher z-transformation function
 fisher_z <- function(r) {
   0.5 * log((1 + r) / (1 - r))
 }
 
-# Try the  Fisher Z transformation for data that has been z-transformed to compare output of this function with already transformed data
+# Try the  Fisher z-transformation for data that has been z-transformed to compare output of this function with already transformed data
 cobra_no_z <- cobra_no_z %>%
   mutate_at(vars(-"...1"), fisher_z)
 

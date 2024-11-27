@@ -25,9 +25,14 @@ if (!require("gtools")) {
   install.packages("gtools")
   require("gtools")
 }
-
-library(readr)
-library(readxl)
+if (!require("readr")) {
+  install.packages("readr")
+  require("readr")
+}
+if (!require("readxl")) {
+  install.packages("readxl")
+  require("readxl")
+}
 ```
 
 Note that education data is years of education and sex is coded as male=1 and female=2
@@ -56,7 +61,6 @@ waha_df_struct <- merge(waha_df_dem, waha_df_struct, by = c("id", "timepoint"), 
 ```
 
 Now, read in the demographic, and structural data for the WAHA control group 
-
 ```{r warning=FALSE}
 # Read in control data
 waha_df_struct_controls <- read.delim("/tsd/p274/data/durable/projects/p027-cr_bm/aaic/bcn.txt", header = TRUE)
@@ -134,8 +138,7 @@ columns_to_keep <- c(
 waha_df_struct <- select(waha_df_struct, all_of(columns_to_keep))
 ```
 
-
-Before getting into the FC data, this code is to generate the regions in the Shirer atlas that are also in the task invariant network
+Read in and clean the functional WAHA data and merge it with the structural
 ```{r message=FALSE, warning=FALSE}
 # Read in the WAHA data as a reference
 waha_df_fc <- read_delim("/tsd/p274/data/durable/projects/p027-cr_bm/rsFC/WAHAFiltAndResid_Fisher-z-trans.csv",
@@ -151,12 +154,7 @@ waha_df_fc <- rename(waha_df_fc, id = code)
 # Rename the IDs to include waha in the id
 waha_df_fc <- waha_df_fc %>%
   mutate(id = gsub("WAHA", "waha_", id))
-```
 
-Now clean the functional WAHA data and merge it with the structural
-
-
-```{r message=FALSE, warning=FALSE}
 # Subset waha_df_fc to only include necessary data
 selected_cols <- c(
   "id", "timepoint",
@@ -223,34 +221,37 @@ waha_df <- merge(waha_mem, waha_df, by = c("id", "timepoint"), all = TRUE)
 waha_df <- waha_df[!grepl("^waha_20", waha_df$id), ]
 ```
 
-Clean WAHA df and reformat to wide df
+Write a function to use throughout the script to convert data to wide format
+```{r warning=FALSE}
+wide_format <- function(data, n_timepoints, common_vars) {
+  result <- NULL
 
+  for (i in 1:n_timepoints) {
+    suffix <- paste0(".", i)
+    timepoint_data <- data %>%
+      filter(timepoint == i) %>%
+      rename_with(~ paste0(.x, suffix), -c(id, timepoint, all_of(common_vars))) %>%
+      select(-starts_with("timepoint")) # Remove the timepoint column after processing
+
+    result <- if (is.null(result)) {
+      timepoint_data
+    } else {
+      full_join(result, timepoint_data, by = c("id", common_vars))
+    }
+  }
+
+  return(result)
+}
+```
+
+Clean WAHA df and reformat to wide df
 ```{r warning=FALSE}
 # Save a copy of the df as csv before changing to wide format
 write.csv(waha_df, file = "/tsd/p274/data/durable/projects/p027-cr_bm/Clean Data All Cohorts/WAHA clean raw data.csv")
 
-# Reshape data for timepoint 1
-waha_baseline <- waha_df %>%
-  filter(timepoint == 1) %>%
-  rename_with(~ paste0(.x, ".1"), -c(id, timepoint, sex, edu, mmse))
-
-# Reshape data for timepoint 2
-waha_followup <- waha_df %>%
-  filter(timepoint == 2) %>%
-  rename_with(~ paste0(.x, ".2"), -c(id, timepoint, sex, edu, mmse))
-
-# Reshape data for timepoint 3
-waha_followup2 <- waha_df %>%
-  filter(timepoint == 3) %>%
-  rename_with(~ paste0(.x, ".3"), -c(id, timepoint, sex, edu, mmse))
-
-# Join the reshaped data frames together
-waha_df <- waha_baseline %>%
-  full_join(waha_followup, by = c("id", "sex", "edu", "mmse")) %>%
-  full_join(waha_followup2, by = c("id", "sex", "edu", "mmse"))
-
-waha_df <- waha_df %>%
-  select(-starts_with("timepoint"))
+# Run function to convert to wide
+common_vars <- c("sex", "edu", "mmse")
+waha_df <- wide_format(waha_df, 3, common_vars)
 ```
 
 
@@ -303,7 +304,6 @@ cobra_struct <- select(cobra_struct, all_of(columns_to_keep))
 ```
 
 Now read in functional data and merge
-
 ```{r message=FALSE, warning=FALSE}
 # Read COBRA functional data
 cobra_func <- read_csv("/tsd/p274/data/durable/projects/p027-cr_bm/Umu/FC_shirer_CobraBetula/FC_Shirer90x90_Fisher-z-trans_FiltAndResid_Cobra_smallBB.csv")
@@ -334,13 +334,10 @@ cobra_func <- cobra_func %>%
   mutate(id = str_replace(id, "C([0-9]+)_y[0-9]+", "cobra_C\\1")) # This removes the string timepoint and adds the string cobra
 
 # Merge COBRA structural and functional dfs into one
-
 cobra_df <- merge(cobra_struct, cobra_func, by = c("id", "timepoint"), all = TRUE) # This keeps all participants so need to drop NAs
 ```
 
-
 Rename variables and covert to wide format
-
 ```{r warning=FALSE}
 # Save a copy of the df as csv before changing to wide format
 write.csv(cobra_df, file = "/tsd/p274/data/durable/projects/p027-cr_bm/Clean Data All Cohorts/Cobra clean raw data.csv")
@@ -351,24 +348,8 @@ cobra_df <- cobra_df %>%
   group_by(id) %>%
   mutate(across(starts_with("mmse"), ~ if_else(timepoint != 1, .[timepoint == 1], .)))
 
-
-# Reformat the df with one row for each participant
-# Reshape data for timepoint 1
-cobra_baseline <- cobra_df %>%
-  filter(timepoint == 1) %>%
-  rename_with(~ paste0(.x, ".1"), -c(id, sex, edu, mmse))
-
-# Reshape data for timepoint 2
-cobra_followup <- cobra_df %>%
-  filter(timepoint == 2) %>%
-  rename_with(~ paste0(.x, ".2"), -c(id, sex, edu, mmse))
-
-# Join the reshaped data frames together
-cobra_df <- full_join(cobra_baseline, cobra_followup, by = c("id", "sex", "edu", "mmse"))
-
-# Remove timepoint variable
-cobra_df <- cobra_df %>%
-  select(-starts_with("timepoint"))
+# Run function to convert to wide
+cobra_df <- wide_format(cobra_df, 2, common_vars)
 ```
 
 Create a clean df for Betula data
@@ -409,8 +390,8 @@ betula_df_struct <- betula_df_struct %>%
   group_by(id) %>%
   mutate(timepoint = row_number())
 ```
-Now read in the Betula functional data
 
+Now read in the Betula functional data
 ```{r message=FALSE, warning=FALSE}
 betula_func <- read_csv("/tsd/p274/data/durable/projects/p027-cr_bm/Umu/FC_shirer_CobraBetula/FC_Shirer90x90_Fisher-z-trans_FiltAndResid_Betula_smallBB.csv")
 
@@ -450,7 +431,6 @@ betula_df <- merge(betula_df_struct, betula_func, by = c("id", "timepoint"), all
 ```
 
 Read in Betula memory df 
-
 ```{r message=FALSE, warning=FALSE}
 betula_em <- read_excel("/tsd/p274/data/durable/projects/p027-cr_bm/Umu/B_p027.xlsx")
 
@@ -469,7 +449,6 @@ columns_to_keep <- c("id", "timepoint", "edu", "mmse", "sex", "SPT_VTCategoryCue
 
 betula_em <- select(betula_em, all_of(columns_to_keep))
 
-
 # Rename the IDs
 betula_em <- betula_em %>%
   mutate(id = paste0("betula_", gsub("\\.", "", sub("_T[5-7]$", "", id))))
@@ -487,7 +466,6 @@ betula_df <- merge(betula_em, betula_df, by = c("id", "timepoint"), all = TRUE) 
 ```
 
 Read in Betula ages df 
-
 ```{r message=FALSE, warning=FALSE}
 betula_age <- read_excel("/tsd/p274/data/durable/projects/p027-cr_bm/Umu/LB_data_tables_setup_V6_MRI-dates_2019-02-12 - KLAR.xlsx")
 
@@ -515,7 +493,6 @@ Note that while Betula does have three timepoints of data, we only have ages for
 betula_df <- betula_df %>%
   subset(timepoint != 3)
 
-
 # Save a copy of the df as csv before changing to wide format
 write.csv(betula_df, file = "/tsd/p274/data/durable/projects/p027-cr_bm/Clean Data All Cohorts/Betula clean raw data.csv")
 
@@ -525,29 +502,12 @@ betula_df <- betula_df %>%
   group_by(id) %>%
   mutate(across(starts_with("mmse"), ~ if_else(timepoint != 1, .[timepoint == 1], .)))
 
-# Reformat the df with one row for each participant
-
-# Reshape data for timepoint 1
-betula_baseline <- betula_df %>%
-  filter(timepoint == 1) %>%
-  rename_with(~ paste0(.x, ".1"), -c(id, sex, edu, mmse))
-
-# Reshape data for timepoint 2
-betula_followup <- betula_df %>%
-  filter(timepoint == 2) %>%
-  rename_with(~ paste0(.x, ".2"), -c(id, timepoint, sex, edu, mmse))
-
-# Join the reshaped data frames together
-betula_df <- betula_baseline %>%
-  full_join(betula_followup, by = c("id", "sex", "edu", "mmse"))
-
-betula_df <- betula_df %>%
-  select(-starts_with("timepoint"))
+# Run function to convert to wide
+betula_df <- wide_format(betula_df, 2, common_vars)
 ```
 
 Create a clean df for the Oslo data
 Start by reading in the structural and memory data
-
 ```{r warning=FALSE}
 oslo_struct <- read_delim("/tsd/p274/data/durable/projects/p027-cr_bm/aaic/oslo.csv",
   delim = ";", escape_double = FALSE, trim_ws = TRUE, show_col_types = FALSE
@@ -605,8 +565,7 @@ oslo_struct <- oslo_struct %>%
   filter(!(scanner == "ousPrisma" | scanner == "noMRI"))
 ```
 
-Readin Oslo functional data and merge dfs
-
+Read in Oslo functional data and merge dfs
 ```{r warning=FALSE}
 oslo_func <- read_delim("/tsd/p274/data/durable/projects/p027-cr_bm/UiO/results/FC_Shirer90x90_Fisher-z-trans.csv",
   delim = ",", escape_double = FALSE, trim_ws = TRUE, show_col_types = FALSE
@@ -672,7 +631,6 @@ oslo_df <- merge(oslo_struct, oslo_func2, by = c("id", "timepoint", "scanner"), 
 ```
 
 Create a variable to consider the multiple MRI scanners and convert to wide format
-
 ```{r warning=FALSE}
 # Edit the df to remove any timepoints where someone was scanned on a different scanner
 # Some people have a different scanner for one tp so this removes that tp
@@ -707,47 +665,8 @@ oslo_df <- oslo_df %>%
   group_by(id) %>%
   mutate(mmse = first(mmse))
 
-# Reformat the df with one row for each participant
-# Reshape data for timepoint 1
-oslo_baseline <- oslo_df %>%
-  filter(timepoint == 1) %>%
-  rename_with(~ paste0(.x, ".1"), -c(id, timepoint, sex, edu, mmse))
-
-# Reshape data for timepoint 2
-oslo_followup <- oslo_df %>%
-  filter(timepoint == 2) %>%
-  rename_with(~ paste0(.x, ".2"), -c(id, timepoint, sex, edu, mmse))
-
-# Reshape data for timepoint 3
-oslo_followup2 <- oslo_df %>%
-  filter(timepoint == 3) %>%
-  rename_with(~ paste0(.x, ".3"), -c(id, timepoint, sex, edu, mmse))
-
-# Reshape data for timepoint 4
-oslo_followup3 <- oslo_df %>%
-  filter(timepoint == 4) %>%
-  rename_with(~ paste0(.x, ".4"), -c(id, timepoint, sex, edu, mmse))
-
-# Reshape data for timepoint 5
-oslo_followup4 <- oslo_df %>%
-  filter(timepoint == 5) %>%
-  rename_with(~ paste0(.x, ".5"), -c(id, timepoint, sex, edu, mmse))
-
-# Reshape data for timepoint 6
-oslo_followup5 <- oslo_df %>%
-  filter(timepoint == 6) %>%
-  rename_with(~ paste0(.x, ".6"), -c(id, timepoint, sex, edu, mmse))
-
-# Join the reshaped data frames together
-oslo_df <- oslo_baseline %>%
-  full_join(oslo_followup, by = c("id", "sex", "edu", "mmse")) %>%
-  full_join(oslo_followup2, by = c("id", "sex", "edu", "mmse")) %>%
-  full_join(oslo_followup3, by = c("id", "sex", "edu", "mmse")) %>%
-  full_join(oslo_followup4, by = c("id", "sex", "edu", "mmse")) %>%
-  full_join(oslo_followup5, by = c("id", "sex", "edu", "mmse"))
-
-oslo_df <- oslo_df %>%
-  select(-starts_with("timepoint"))
+# Run function to convert to wide
+oslo_df <- wide_format(oslo_df, 6, common_vars)
 
 # Make a df to check that the scanners are being selected correctly
 oslo_df_scanners <- select(
@@ -775,10 +694,15 @@ betula_df$CuedRecall_vtcrc_baseline <- apply(betula_df[, c(paste0("SPT_VTCategor
 betula_df$FreeRecall_sptb_baseline <- apply(betula_df[, c(paste0("SPT_VTFreeRecall::sptb.", 1:2))], 1, get_first_non_na)
 betula_df$FreeRecall_vtb_baseline <- apply(betula_df[, c(paste0("SPT_VTFreeRecall::vtb.", 1:2))], 1, get_first_non_na)
 
-waha_df$Verbal_memory_RAVLT_delayed_baseline <- apply(waha_df[, c(paste0("Verbal_Memory_RAVLT_delayed.", 1:3))], 1, get_first_non_na)
-waha_df$Verbal_memory_RAVLT_total_baseline <- apply(waha_df[, c(paste0("Verbal_memory_RAVLT_Total.", 1:3))], 1, get_first_non_na)
+waha_df$Verbal_Memory_RAVLT_delayed_baseline <- apply(waha_df[, c(paste0("Verbal_Memory_RAVLT_delayed.", 1:3))], 1, get_first_non_na)
+waha_df$Verbal_memory_RAVLT_Total_baseline <- apply(waha_df[, c(paste0("Verbal_memory_RAVLT_Total.", 1:3))], 1, get_first_non_na)
 waha_df$Visual_Memory_ROCF_Imm_baseline <- apply(waha_df[, c(paste0("Visual_Memory_ROCF_Imm.", 1:3))], 1, get_first_non_na)
+
+cobra_df$EM_numerical_baseline <- apply(cobra_df[, c(paste0("EM_numerical.", 1:2))], 1, get_first_non_na)
+cobra_df$EM_figural_baseline <- apply(cobra_df[, c(paste0("EM_figural.", 1:2))], 1, get_first_non_na)
+cobra_df$EM_verbal_baseline <- apply(cobra_df[, c(paste0("EM_verbal.", 1:2))], 1, get_first_non_na)
 ```
+
 
 Now find the hippocampus and age baseline values
 ```{r warning=FALSE}

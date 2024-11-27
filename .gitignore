@@ -1,17 +1,7 @@
-# Ignore everything
-*
+# Ignore
+Fisher z-transformation.R
+Format scripts.R
 
-# Do not ignore .gitignore file
-!.gitignore
-
-# Do not ignore Python scripts 
-!*.ipynb
-
-# Do not ignore R or R markdown scripts 
-!*.R
-!*.Rmd
-
-# Except for these scripts
-cleaning BBHI data.ipynb
-bbhi mci script.R
-crbm grid figure.R
+.DS_Store
+.venv/
+mri/
