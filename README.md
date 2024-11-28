@@ -2,7 +2,7 @@
 
 This repository contains the analysis scripts for our study on Cognitive Reserve (CR) and Brain Maintenance (BM), which explores their longitudinal roles in cognitive aging. This document provides an overview of the project and the available scripts.
 
-### Repository Structure
+## Repository Structure
 
 #### How to create the CR/BM variables
 
@@ -18,6 +18,6 @@ This section includes several scripts used to conduct this study:
 - `04_Analysis and Results.Rmd`: Contains all primary analyses and supplemental analyses from the study.
 - `05_Neuroimaging Figures.ipynb`: Generates neuroimaging figures of the hippocampus and relevant functional networks.
 
-#### Usage
+## Usage
 
 This repository provides details on the analyses and the creation of study variables for transparency. The dataset used is not included. For access - with appropriate ethical approval - you can request the data from each Lifebrain study’s primary investigator ([information here](https://www.lifebrain.uio.no/about/lifebrain-researchers/)).
