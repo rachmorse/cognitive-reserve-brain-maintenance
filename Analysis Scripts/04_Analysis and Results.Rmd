@@ -403,10 +403,18 @@ bm_pathway <- clean_data %>%
   filter(closer_to == "BM") %>%
   nrow()
 total_participants <- nrow(clean_data)
+
+# Run analyses for validating the CR variable as a measure of CR
+cr_var <- c(
+  "scale(reverse_cr)"
+)
+
+# Running the regression model
+cr_validation <- get_regression_stats(scale(memory_slopes) ~ scale(hc_slopes) + scale(reverse_cr) + study + scale(age_baseline) + scale(mem_time) + sex + scale(edu), data = clean_data, cr_var)
 ```
 __CR and BM Variables and Index__
 
-We established CR (mean = `r round(mean_cr, 3)`, SD = `r round(sd_cr, 3)`) and BM (mean = `r round(mean_bm, 3)`, SD = `r round(sd_bm, 3)`) variables (Figure 3). 
+We established CR (mean = `r round(mean_cr, 3)`, SD = `r round(sd_cr, 3)`) and BM (mean = `r round(mean_bm, 3)`, SD = `r round(sd_bm, 3)`) variables (Figure 3). In a model with hippocampal annual change included, we found that CR remained a  significant predictor of memory annual change (β = `r round(cr_validation$coef, 3)`, _p_ = `r format_p_value(cr_validation$p_value)`, _p_<sub>FDR</sub> = `r format_p_value(p_value_df[p_value_df$model_name == "cr_validation", "adjusted_p_value"])`, r² = `r round(emhp_merged$r2, 3)`).
 
 ```{r echo=FALSE, warning=FALSE}
 custom_colors <- c("purple", "#6a4c93", "#4267ac", "#1982c4", "#52a675", "#8ac926", "#c5ca30", "#ffca3a", "#ff924c", "#ff595e")
@@ -932,7 +940,6 @@ __Figure 6:__ _The Interaction Between Cognitive Reserve, Functional Connectivit
 combined_plot
 ```
 
-
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 high_cr <- clean_data %>%
   filter(reverse_cr_group == "High CR")
@@ -1421,7 +1428,7 @@ models <- list(
   gam.compare.em_memory, gam.compare.em_adj_hc,
   emhp_merged, model_baseline, model_followup,
   edu_baseline, edu_followup, edu_long, edu_cr, edu_bm, edu_cr_int, edu_bm_int,
-  bm_age_lm, cr_age_lm, resilience_lm,
+  cr_validation, bm_age_lm, cr_age_lm, resilience_lm,
   bm_dmn_stats, bm_dmn, bm_ecn_stats, bm_ec, bm_sn_stats, bm_sn,
   cr_dmn_stats, cr_dmn, cr_ecn_stats, cr_ec, cr_sn_stats, cr_sn,
   cr_dmn_bl, cr_dmn_fu, cr_dmn_stats_bl, cr_dmn_stats_fu,
@@ -1439,7 +1446,7 @@ model_names <- c(
   "gam.compare.em_memory", "gam.compare.em_adj_hc",
   "emhp_merged", "model_baseline", "model_followup",
   "edu_baseline", "edu_followup", "edu_long", "edu_cr", "edu_bm", "edu_cr_int", "edu_bm_int",
-  "bm_age_lm", "cr_age_lm", "resilience_lm",
+  "cr_validation", "bm_age_lm", "cr_age_lm", "resilience_lm",
   "bm_dmn_stats", "bm_dmn", "bm_ecn_stats", "bm_ec", "bm_sn_stats", "bm_sn",
   "cr_dmn_stats", "cr_dmn", "cr_ecn_stats", "cr_ec", "cr_sn_stats", "cr_sn",
   "cr_dmn_bl", "cr_dmn_fu", "cr_dmn_stats_bl", "cr_dmn_stats_fu",
