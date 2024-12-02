@@ -212,7 +212,7 @@ knitr::kable(summary_stats, align = "c")
 
 We found that as age increased both memory and adjusted hippocampus volume decreased, though we also observed inter-individual differences in these relationships (Supplementary Figure 1). Both the linear and GAM models fit to this data showed evidence of significant relationships between memory/adjusted hippocampus volume and age. There was evidence of a non-linear relationship between adjusted hippocampus volume and age; however, there was no evidence of a non-linear relationship between memory and age (Supplementary Table 1). We include further details in the supplementary materials.
 
-__Episodic Memory and Hippocampus Change:__ 
+__**Episodic Memory and Hippocampus Change:**__ 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 # Helper function to format p-values
 format_p_value <- function(p) {
@@ -412,7 +412,7 @@ cr_var <- c(
 # Running the regression model
 cr_validation <- get_regression_stats(scale(memory_slopes) ~ scale(hc_slopes) + scale(reverse_cr) + study + scale(age_baseline) + scale(mem_time) + sex + scale(edu), data = clean_data, cr_var)
 ```
-__CR and BM Variables and Index__
+__**CR and BM Variables and Index:**__
 
 We established CR (mean = `r round(mean_cr, 3)`, SD = `r round(sd_cr, 3)`) and BM (mean = `r round(mean_bm, 3)`, SD = `r round(sd_bm, 3)`) variables (Figure 3). In a model with hippocampal annual change included, we found that CR remained a  significant predictor of memory annual change (β = `r round(cr_validation$coef, 3)`, _p_ = `r format_p_value(cr_validation$p_value)`, _p_<sub>FDR</sub> = `r format_p_value(p_value_df[p_value_df$model_name == "cr_validation", "adjusted_p_value"])`, r² = `r round(emhp_merged$r2, 3)`).
 
@@ -472,7 +472,7 @@ combined_crbm
 
 <small>(A) The association between hippocampus annual change and memory annual change, adjusted for cohort/MRI scanner, depicted with a diagonal line representing the BM line. The color code represents the level of BM for a given participant. (B) The same association between hippocampus annual change and memory annual change, adjusted for cohort/MRI scanner, this time depicted with a diagonal line representing the CR line. The color code represents the level of CR for a given participant.</small>
 
-We then created the CR and BM index with participants classified as on the CR pathway (N = `r cr_pathway`/`r total_participants`) or the BM pathway (N = `r bm_pathway`/`r total_participants`) (Figure 4). The mean level of resilience was `r round(mean_total_cr_bm, 3)` (SD = `r round(sd_total_cr_bm, 3)`) and the mean absolute index value was `r round(mean_distance_midline, 3)` (SD = `r round(sd_distance_midline, 3)`).
+We then created the CR and BM index with participants classified as on the CR pathway (N = `r cr_pathway`/`r total_participants`) or the BM pathway (N = `r bm_pathway`/`r total_participants`) (Figure 4). The mean level of the calculated resilience variable was `r round(mean_total_cr_bm, 3)` (SD = `r round(sd_total_cr_bm, 3)`) and the mean absolute index value was `r round(mean_distance_midline, 3)` (SD = `r round(sd_distance_midline, 3)`).
 
 ```{r echo=FALSE, warning=FALSE}
 # Create breaks for the graph looks nice
@@ -516,7 +516,7 @@ __Figure 4:__ _Index of Brain Maintenance and Cognitive Reserve_
 index_plot
 ```
 
-An index depicting participants as either on the BM or CR pathway. The x-axis represents the index value – the ratio of CR to BM for participants with more CR and the ratio of BM to CR for participants with more BM. The y-axis represents the level of resilience, or the total value of CR plus BM.
+An index depicting participants as either on the BM or CR pathway. The x-axis represents the index value – the ratio of CR to BM for participants with more CR and the ratio of BM to CR for participants with more BM. The y-axis represents the level of resilience or the total value of CR plus BM.
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 # Divide the continuous variable into groups to be able to better visualize the data
@@ -738,7 +738,7 @@ edu_cr_int <- get_regression_stats(scale(memory_slopes) ~ scale(reverse_cr) * sc
 edu_bm_int <- get_regression_stats(scale(memory_slopes) ~ scale(reverse_bm) * scale(edu) + study, data = clean_data, int_vars)
 ```
 
-__BM / CR and Education__
+__**BM / CR and Education:**__
 
 There were no significant relationships between CR (_p_ = `r format_p_value(edu_cr$p_value)`, _p_<sub>FDR</sub> = `r format_p_value(p_value_df[p_value_df$model_name == "edu_cr", "adjusted_p_value"])`) or BM (_p_ = `r format_p_value(edu_bm$p_value)`, _p_<sub>FDR</sub> = `r format_p_value(p_value_df[p_value_df$model_name == "edu_bm", "adjusted_p_value"])`) and education. There was no significant interaction BM (_p_ = `r format_p_value(edu_bm_int$p_value)`, _p_<sub>FDR</sub> = `r format_p_value(p_value_df[p_value_df$model_name == "edu_bm_int", "adjusted_p_value"])`) and education regressed on memory annual change. There was limited evidence of a significant interaction between CR and education regressed on memory annual change; however, this did not survive correction for multiple comparisons (β = `r round(edu_cr_int$coef, 3)`, _p_ = `r format_p_value(edu_cr_int$p_value)`, _p_<sub>FDR</sub> = `r format_p_value(p_value_df[p_value_df$model_name == "edu_cr_int", "adjusted_p_value"])`, r² = `r round(edu_cr_int$r2, 3)`). All education and CR/BM results are summarized in Table 6. 
 
@@ -838,7 +838,7 @@ bm_sn_bl <- get_regression_stats(scale(memory_baseline) ~ scale(reverse_bm) * sc
 bm_sn_fu <- get_regression_stats(scale(memory_followup) ~ scale(reverse_bm) * scale(sn_baseline) + study, data = clean_data, priority_var_int_bm)
 ```
 
-__BM / CR and Functional Connectivity__ 
+__**BM / CR and Functional Connectivity:**__ 
 
 There was no evidence of a significant association between BM and DMN annual change (_p_ = `r format_p_value(bm_dmn_stats$p_value)`, _p_<sub>FDR</sub> = `r format_p_value(p_value_df[p_value_df$model_name == "bm_dmn_stats", "adjusted_p_value"])`) nor ECN annual change (_p_ = `r format_p_value(bm_ecn_stats$p_value)`, _p_<sub>FDR</sub> = `r format_p_value(p_value_df[p_value_df$model_name == "bm_ecn_stats", "adjusted_p_value"])`). There was limited evidence of a significant association between BM and anterior SN annual change; however, this association did not survive correction for multiple comparisons (β = `r round(bm_sn_stats$coef, 3)`, _p_ = `r format_p_value(bm_sn_stats$p_value)`, _p_<sub>FDR</sub> = `r format_p_value(p_value_df[p_value_df$model_name == "bm_sn_stats", "adjusted_p_value"])`, r² = `r round(bm_sn_stats$r2, 3)`). Additionally, there were no significant interactions between BM and both ECN annual change and anterior SN annual change regressed on memory annual change (ECN _p_ = `r format_p_value(bm_ec$p_value)`, _p_<sub>FDR</sub> = `r format_p_value(p_value_df[p_value_df$model_name == "bm_ec", "adjusted_p_value"])`; anterior SN _p_ = `r format_p_value(bm_sn$p_value)`, _p_<sub>FDR</sub> = `r format_p_value(p_value_df[p_value_df$model_name == "bm_sn", "adjusted_p_value"])`). Though we found some evidence of an interaction between BM and DMN annual change regressed on memory annual change, the interaction did not survive correction for multiple comparisons (BM/DMN β = `r round(bm_dmn$coef, 3)`, _p_ = `r format_p_value(bm_dmn$p_value)`, _p_<sub>FDR</sub> = `r format_p_value(p_value_df[p_value_df$model_name == "bm_dmn", "adjusted_p_value"])`, r² = `r round(bm_dmn$r2, 3)`). Cross-sectionally at baseline and follow-up, there were no significant associations between BM and functional connectivity nor any significant interactions between BM and functional connectivity regressed on memory (Supplementary Table 2). 
 
@@ -1234,18 +1234,13 @@ hc_mem_age
 ```
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
-vars <- c(
-  "scale(age)"
-)
-
 vars_unscale <- c(
   "age"
 )
 
-mem_age <- get_regression_stats(scale(memory) ~ scale(age) + study, data = long_clean_data, vars)
 mem_age_unscaled <- get_regression_stats((memory) ~ age + study, data = long_clean_data, vars_unscale)
 ```
-<small>(A) The association between memory and age with individual trajectories and a linear model displaying a coefficient of `r round(mem_age_unscaled$coef, 3)` (scaled: `r round(mem_age$coef, 3)`) and confidence intervals. (B) The association between adjusted hippocampal volume and age with individual trajectories with a generalized additive model (EDF = `r round(summary_hc$s.table["s(age)", "edf"], 3)`) and confidence intervals.</small>
+<small>(A) The association between memory and age with individual trajectories and a linear model displaying a coefficient of `r round(mem_age_unscaled$coef, 3)` (scaled: `r round(mem_age_lin$coef, 3)`) and confidence intervals. (B) The association between adjusted hippocampal volume and age with individual trajectories with a generalized additive model (EDF = `r round(summary_hc$s.table["s(age)", "edf"], 3)`) and confidence intervals.</small>
 
 **_Cross-sectional BM / CR and Functional Connectivity_**
 
@@ -1437,7 +1432,6 @@ models <- list(
   bm_dmn_bl, bm_dmn_fu, bm_dmn_stats_bl, bm_dmn_stats_fu,
   bm_ec_bl, bm_ec_fu, bm_ecn_stats_bl, bm_ecn_stats_fu,
   bm_sn_bl, bm_sn_fu, bm_sn_stats_bl, bm_sn_stats_fu,
-  mem_age, mem_age_unscaled,
   summary_memory, summary_hc,
   hc_age_lin, mem_age_lin
 )
@@ -1455,7 +1449,6 @@ model_names <- c(
   "bm_dmn_bl", "bm_dmn_fu", "bm_dmn_stats_bl", "bm_dmn_stats_fu",
   "bm_ec_bl", "bm_ec_fu", "bm_ecn_stats_bl", "bm_ecn_stats_fu",
   "bm_sn_bl", "bm_sn_fu", "bm_sn_stats_bl", "bm_sn_stats_fu",
-  "mem_age", "mem_age_unscaled",
   "summary_memory", "summary_hc",
   "hc_age_lin", "mem_age_lin"
 )
