@@ -55,6 +55,18 @@ if (!require("readxl")) {
   install.packages("readxl")
   require("readxl")
 }
+if (!require("lme4")) {
+  install.packages("lme4")
+  require("lme4")
+}
+if (!require("lmerTest")) {
+  install.packages("lmerTest")
+  require("lmerTest")
+}
+if (!require("gamm4")) {
+  install.packages("gamm4")
+  require("gamm4")
+}
 ```
 
 ```{r echo=FALSE, warning=FALSE}
@@ -519,6 +531,40 @@ index_plot
 An index depicting participants as either on the BM or CR pathway. The x-axis represents the index value – the ratio of CR to BM for participants with more CR and the ratio of BM to CR for participants with more BM. The y-axis represents the level of resilience or the total value of CR plus BM.
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
+# Add a function for getting the stats from LME models
+get_mixed_effects_stats <- function(formula, data, vars_priority) {
+  # Fit the mixed-effects model
+  model <- lmer(formula, data = data)
+  summary_model <- summary(model)
+  coefficients <- summary_model$coefficients
+  anova_results <- anova(model)  # Get ANOVA results for p-values
+  
+  # Initialize the variable index
+  variable_index <- NULL
+
+  # Check for each variable in priority order and break on the first match
+  for (var in vars_priority) {
+    if (var %in% rownames(coefficients)) {
+      variable_index <- which(rownames(coefficients) == var)
+      break
+    }
+  }
+
+  # Check if a relevant variable was found
+  if (is.null(variable_index)) {
+    stop("None of the priority variables are in the model.")
+  }
+
+  coef <- coefficients[variable_index, 1]
+  ci <- confint(model, parm = rownames(coefficients)[variable_index])
+
+  # Extract p-value from ANOVA table
+  p_value <- anova_results[which(rownames(anova_results) == rownames(coefficients)[variable_index]), "Pr(>F)"]
+  r2 <- as.data.frame(VarCorr(model))$vcov[1]
+
+  return(list(coef = coef, ci = ci, p_value = p_value, r2 = r2))
+}
+
 # Divide the continuous variable into groups to be able to better visualize the data
 clean_data$resilience <- cut(clean_data$total_cr_bm,
   breaks = quantile(clean_data$total_cr_bm, probs = seq(0, 1, (1 / 2)), na.rm = TRUE),
@@ -548,15 +594,33 @@ vars <- c(
   "scale(age):scale(reverse_bm)"
 )
 
-resilience_lm <- get_regression_stats(scale(memory) ~ scale(age) * scale(total_cr_bm) + study + scale(age_baseline) + scale(mem_time) + sex + scale(edu), long_data_vis, vars)
-cr_age_lm <- get_regression_stats(scale(memory) ~ scale(age) * scale(reverse_cr) + study + scale(age_baseline) + scale(mem_time) + sex + scale(edu), long_data_vis, vars)
-bm_age_lm <- get_regression_stats(scale(memory) ~ scale(age) * scale(reverse_bm) + study + scale(age_baseline) + scale(mem_time) + sex + scale(edu), long_data_vis, vars)
+resilience_lme <- get_mixed_effects_stats(
+  scale(memory) ~ scale(age) * scale(total_cr_bm) + study + scale(age_baseline) + 
+  scale(mem_time) + sex + scale(edu) + (1 | id), 
+  long_data_vis, 
+  vars
+)
+cr_age_lme <- get_mixed_effects_stats(
+  scale(memory) ~ scale(age) * scale(reverse_cr) + study + scale(age_baseline) + 
+  scale(mem_time) + sex + scale(edu) + (1 | id), 
+  long_data_vis, 
+  vars
+)
+
+bm_age_lme <- get_mixed_effects_stats(
+  scale(memory) ~ scale(age) * scale(reverse_bm) + study + scale(age_baseline) + 
+  scale(mem_time) + sex + scale(edu) + (1 | id), 
+  long_data_vis, 
+  vars
+)
 ```
 
-We then found a significant interaction between resilience and age regressed on memory (β = `r round(resilience_lm$coef, 3)`, _p_ = `r format_p_value(resilience_lm$p_value)`, _p_<sub>FDR</sub> = `r format_p_value(p_value_df[p_value_df$model_name == "resilience_lm", "adjusted_p_value"])`, r² = `r round(resilience_lm$adj_r2, 3)`) (Figure 5). We also found a significant interaction between CR and age (β = `r round(cr_age_lm$coef, 3)`, _p_ = `r format_p_value(cr_age_lm$p_value)`, _p_<sub>FDR</sub> = `r format_p_value(p_value_df[p_value_df$model_name == "cr_age_lm", "adjusted_p_value"])`, r² = `r round(cr_age_lm$adj_r2, 3)`) and BM and age (β = `r round(bm_age_lm$coef, 3)`, _p_ = `r format_p_value(bm_age_lm$p_value)`, _p_<sub>FDR</sub> = `r format_p_value(p_value_df[p_value_df$model_name == "bm_age_lm", "adjusted_p_value"])`, r² = `r round(bm_age_lm$adj_r2, 3)`) regressed on memory (Table 5). The interaction between age and resilience (t = `r round(resilience_lm$t_stat, 3)`,
-_p_ = `r format(resilience_lm$p_value, digits = 3, scientific = TRUE)`, _p_<sub>FDR</sub> = `r format(p_value_df[p_value_df$model_name == "resilience_lm", "adjusted_p_value"], digits = 3, scientific = TRUE)`) was stronger than that of age and BM (t = `r round(bm_age_lm$t_stat, 3)`, _p_ = `r format(bm_age_lm$p_value, digits = 3, scientific = TRUE)`, _p_<sub>FDR</sub> = `r format(p_value_df[p_value_df$model_name == "bm_age_lm", "adjusted_p_value"], digits = 3, scientific = TRUE)`) and that of age and CR (t = `r round(cr_age_lm$t_stat, 3)`, _p_ = `r format(cr_age_lm$p_value, digits = 3, scientific = TRUE)`, _p_<sub>FDR</sub> = `r format(p_value_df[p_value_df$model_name == "cr_age_lm", "adjusted_p_value"], digits = 3, scientific = TRUE)`).  
+We then found a significant interaction between resilience and age regressed on memory (β = `r round(resilience_lme$coef, 3)`, _p_ = `r format_p_value(resilience_lme$p_value)`, _p_<sub>FDR</sub> = `r format_p_value(p_value_df[p_value_df$model_name == "resilience_lme", "adjusted_p_value"])`, r² = `r round(resilience_lme$r2, 3)`) (Figure 5). We also found a significant interaction between CR and age (β = `r round(cr_age_lme$coef, 3)`, _p_ = `r format_p_value(cr_age_lme$p_value)`, _p_<sub>FDR</sub> = `r format_p_value(p_value_df[p_value_df$model_name == "cr_age_lme", "adjusted_p_value"])`, r² = `r round(cr_age_lme$r2, 3)`) and BM and age (β = `r round(bm_age_lme$coef, 3)`, _p_ = `r format_p_value(bm_age_lme$p_value)`, _p_<sub>FDR</sub> = `r format_p_value(p_value_df[p_value_df$model_name == "bm_age_lme", "adjusted_p_value"])`, r² = `r round(bm_age_lme$r2, 3)`) regressed on memory (Table 5). 
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+# The interaction between age and resilience (t = `r round(resilience_lme$t_stat, 3)`,
+# _p_ = `r format(resilience_lme$p_value, digits = 3, scientific = TRUE)`, _p_<sub>FDR</sub> = `r format(p_value_df[p_value_df$model_name == "resilience_lme", "adjusted_p_value"], digits = 3, scientific = TRUE)`) was stronger than that of age and BM (t = `r round(bm_age_lme$t_stat, 3)`, _p_ = `r format(bm_age_lme$p_value, digits = 3, scientific = TRUE)`, _p_<sub>FDR</sub> = `r format(p_value_df[p_value_df$model_name == "bm_age_lme", "adjusted_p_value"], digits = 3, scientific = TRUE)`) and that of age and CR (t = `r round(cr_age_lme$t_stat, 3)`, _p_ = `r format(cr_age_lme$p_value, digits = 3, scientific = TRUE)`, _p_<sub>FDR</sub> = `r format(p_value_df[p_value_df$model_name == "cr_age_lme", "adjusted_p_value"], digits = 3, scientific = TRUE)`).  
 # Create the table
 table_resilience <- data.frame(
   " " = c(
@@ -564,38 +628,38 @@ table_resilience <- data.frame(
   ),
   "**Resilience * Age**" = c(
     "_Coefficient (95% CI)_",
-    paste0(round(resilience_lm$coef, 3), " (", round(resilience_lm$ci[1], 3), " to ", round(resilience_lm$ci[2], 3), ")")
+    paste0(round(resilience_lme$coef, 3), " (", round(resilience_lme$ci[1], 3), " to ", round(resilience_lme$ci[2], 3), ")")
   ),
   " " = c(
-    "_Adjusted p-value_", format_p_value(p_value_df[p_value_df$model_name == "resilience_lm", "adjusted_p_value"])
+    "_Adjusted p-value_", format_p_value(p_value_df[p_value_df$model_name == "resilience_lme", "adjusted_p_value"])
   ),
   " " = c(
-    "_Adjusted R²_", round(resilience_lm$adj_r2, 3)
+    "_Adjusted R²_", round(resilience_lme$r2, 3)
   ),
   "**Cognitive Reserve * Age**" = c(
     "_Coefficient (95% CI)_",
-    paste0(round(cr_age_lm$coef, 3), " (", round(cr_age_lm$ci[1], 3), " to ", round(cr_age_lm$ci[2], 3), ")")
+    paste0(round(cr_age_lme$coef, 3), " (", round(cr_age_lme$ci[1], 3), " to ", round(cr_age_lme$ci[2], 3), ")")
   ),
   " " = c(
-    "_Adjusted p-value_", format_p_value(p_value_df[p_value_df$model_name == "cr_age_lm", "adjusted_p_value"])
+    "_Adjusted p-value_", format_p_value(p_value_df[p_value_df$model_name == "cr_age_lme", "adjusted_p_value"])
   ),
   " " = c(
-    "_Adjusted R²_", round(cr_age_lm$adj_r2, 3)
+    "_Adjusted R²_", round(cr_age_lme$r2, 3)
   ),
   "**Brain Maintenance * Age**" = c(
     "_Coefficient (95% CI)_",
-    paste0(round(bm_age_lm$coef, 3), " (", round(bm_age_lm$ci[1], 3), " to ", round(bm_age_lm$ci[2], 3), ")")
+    paste0(round(bm_age_lme$coef, 3), " (", round(bm_age_lme$ci[1], 3), " to ", round(bm_age_lme$ci[2], 3), ")")
   ),
   " " = c(
-    "_Adjusted p-value_", format_p_value(p_value_df[p_value_df$model_name == "bm_age_lm", "adjusted_p_value"])
+    "_Adjusted p-value_", format_p_value(p_value_df[p_value_df$model_name == "bm_age_lme", "adjusted_p_value"])
   ),
   " " = c(
-    "_Adjusted R²_", round(bm_age_lm$adj_r2, 3)
+    "_Adjusted R²_", round(bm_age_lme$r2, 3)
   )
 )
 ```
 
-__Table 5__: _Linear Regressions with Interactions between Age, Resilience, CR, or BM and Memory_
+__Table 5__: _Linear Mixed Effects Models with Interactions between Age and Resilience, CR, or BM on Memory_
 ```{r tab5, echo=FALSE} 
 # Format and print the table
 kable(table_resilience, format = "markdown", col.names = c(" ", "**Resilience * Age**", " ", " ", "**Cognitive Reserve * Age**", " ", " ", "**Brain Maintenance * Age**", " ", " "))
@@ -603,91 +667,79 @@ kable(table_resilience, format = "markdown", col.names = c(" ", "**Resilience * 
 Note. Models are adjusted for age, sex, education, follow-up time, and cohort/MRI scanner. _p_-values are adjusted for multiple comparisons using the FDR. Abbreviations: CI Confidence Interval
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
-long_data_vis$Cohort <- long_data_vis$cohort
-
 # Extract residuals
 long_data_vis_res <- long_data_vis %>%
   filter(!is.na(age) & !is.na(memory))
 
-residual_model_age <- lm(age ~ study, data = long_data_vis_res)
-residual_model_mem <- lm(memory ~ study, data = long_data_vis_res)
-long_data_vis_res$res_age <- residuals(residual_model_age)
-long_data_vis_res$res_mem <- residuals(residual_model_mem)
+# Fit the mixed-effects model
+model_res_lme <- lmer(memory ~ age * resilience + (1 | id), data = long_data_vis_res)
 
-color_palette <- c("indianred2", "steelblue2", "#86db49", "#F7CA18", "blue", "black")
+# Define a range of ages for prediction
+age_seq <- seq(min(long_data_vis_res$age), max(long_data_vis_res$age), length.out = 100)
 
+# Generate predictions for each resilience group
+predictions <- do.call(rbind, lapply(unique(long_data_vis_res$resilience), function(res) {
+  new_data <- data.frame(
+    age = age_seq,
+    resilience = res,
+    id = 1
+  )
+  pred <- predict(model_res_lme, newdata = new_data, se.fit = TRUE, re.form = NA)
+  new_data$predicted <- pred$fit
+  new_data$se <- pred$se.fit
+  # Calculate 95% confidence intervals
+  new_data$lower_bound <- new_data$predicted - 1.96 * new_data$se
+  new_data$upper_bound <- new_data$predicted + 1.96 * new_data$se
+  new_data
+}))
 
-# Divide the continuous variable into groups to be able to better visualize the data
-long_data_vis_res$reverse_bm_group <- cut(long_data_vis_res$reverse_bm,
-  breaks = quantile(long_data_vis_res$reverse_bm, probs = seq(0, 1, (1 / 2)), na.rm = TRUE),
-  include.lowest = TRUE,
-  labels = c("Low BM", "High BM")
-)
+# Define colors for each resilience group
+palette <- c('High Resilience' = '#1f77b4', 'Low Resilience' = '#ff7f0e')
 
-# Create the plot age v memory
-resilience_plot <- ggplot(long_data_vis_res, aes(
-  x = res_age, y = res_mem,
-  group = id
-)) +
-  geom_point() +
-  geom_smooth(
-    method = "lm",
-    aes(group = resilience, color = resilience), se = TRUE
-  ) +
-  scale_color_manual(values = color_palette) +
-  labs(x = "Age", y = "Memory", color = "") +
+# Create the plot
+resilience_plot <- ggplot() +
+  geom_line(data = long_data_vis_res, aes(x = age, y = memory, group = id), color = "lightgray", alpha = 0.5) + # Plot individual trajectories
+  geom_point(data = long_data_vis_res, aes(x = age, y = memory), color = "gray", size = 1) +  # Add scatter points
+  geom_ribbon(data = predictions, aes(x = age, ymin = lower_bound, ymax = upper_bound, fill = as.factor(resilience)), alpha = 0.3) +  # Add CIs
+  geom_line(data = predictions, aes(x = age, y = predicted, color = as.factor(resilience)), size = 1.2) + # Plot predicted lines for each group
+  scale_color_manual(values = palette) +
+  scale_fill_manual(values = palette) +  # Ensure fill colors match line colors
+  labs(x = "Age", y = "Memory", color = "Group", fill = "Group") +
   theme_minimal() +
-  theme(legend.position = "none")
-
-# Divide the continuous variable into groups to be able to better visualize the data
-long_data_vis_res$reverse_bm_group <- cut(long_data_vis_res$reverse_bm,
-  breaks = quantile(long_data_vis_res$reverse_bm, probs = seq(0, 1, (1 / 2)), na.rm = TRUE),
-  include.lowest = TRUE,
-  labels = c("Low BM", "High BM")
-)
-
-# Create the plot age v memory
-resilience_plot_bm <- ggplot(long_data_vis_res, aes(
-  x = res_age, y = res_mem,
-  group = id
-)) +
-  geom_point() +
-  geom_smooth(
-    method = "lm",
-    aes(group = reverse_bm_group, color = reverse_bm_group), se = TRUE
-  ) +
-  scale_color_manual(values = color_palette) +
-  labs(x = "Age", y = "Memory", color = "") +
-  theme_minimal() +
-  theme(legend.position = "none")
-
-# Divide the continuous variable into groups to be able to better visualize the data
-long_data_vis_res$reverse_cr_group <- cut(long_data_vis_res$reverse_cr,
-  breaks = quantile(long_data_vis_res$reverse_cr, probs = seq(0, 1, (1 / 2)), na.rm = TRUE),
-  include.lowest = TRUE,
-  labels = c("Low CR", "High CR")
-)
-
-# Create the plot age v memory
-resilience_plot_cr <- ggplot(long_data_vis_res, aes(
-  x = res_age, y = res_mem,
-  group = id
-)) +
-  geom_point() +
-  geom_smooth(
-    method = "lm",
-    aes(group = reverse_cr_group, color = reverse_cr_group), se = TRUE
-  ) +
-  scale_color_manual(values = color_palette) +
-  labs(x = "Age", y = "Memory", color = "") +
-  theme_minimal() +
-  theme(legend.position = "bottom")
-
-# Combine the plots and collect legend
-resilience <- resilience_plot + resilience_plot_cr + resilience_plot_bm + plot_layout(ncol = 3, guides = "collect") &
   theme(legend.position = "bottom")
 ```
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+# Trying the GAMM model instead of the LME
 
+# Fit a GAMM model using gamm4 with interaction
+# gamm4_model <- gamm4(memory ~ s(age, by = resilience, k = 24) + factor(resilience), 
+#                      random = ~(1|id), data = long_data_vis_res)
+# 
+# 
+# # Create a new data frame for predictions
+# prediction_data <- expand.grid(
+#   age = seq(min(long_data_vis_res$age), max(long_data_vis_res$age), length.out = 100),
+#   resilience = levels(long_data_vis_res$resilience)
+# )
+# prediction_data$id <- NA  # Random effect placeholder
+# 
+# # Generate predictions using the GAMM model
+# prediction_data$predicted <- predict(gamm4_model$gam, newdata = prediction_data, type = "response")
+# 
+# # Create the plot
+# resilience_plot <- ggplot() +
+#   geom_line(data = long_data_vis_res, aes(x = age, y = memory, group = id), color = "lightgray", alpha = 0.5) +
+#   geom_point(data = long_data_vis_res, aes(x = age, y = memory), color = "gray", size = 1) +
+#   geom_ribbon(data = predictions, aes(x = age, ymin = lower_bound, ymax = upper_bound, fill = as.factor(resilience)), alpha = 0.3) +
+#   geom_line(data = prediction_data, aes(x = age, y = predicted, color = as.factor(resilience)), size = 1.2) +
+#   scale_color_manual(values = palette) +
+#   scale_fill_manual(values = palette) +
+#   labs(x = "Age", y = "Memory", color = "Group", fill = "Group") +
+#   theme_minimal() +
+#   theme(legend.position = "bottom")
+# 
+# print(resilience_plot)
+```
 __Figure 5:__ _The Relationship Between Memory and Age Depicted by Resilience Group_
 
 ```{r fig4, echo=FALSE, dpi = 400, fig.width=4, fig.height=4, message=FALSE, warning=FALSE}
@@ -1051,8 +1103,8 @@ Note. Models are adjusted for cohort/MRI scanner. _p_-values are adjusted for mu
 
 **Supplementary Materials**
 
-**_Linear and GAM Models for Memory / Adjusted Hippocampus Volume and Age_**
-```{r echo=FALSE}
+**_LME and GAM Models for Memory / Adjusted Hippocampus Volume and Age_**
+```{r echo=FALSE, message=FALSE, warning=FALSE}
 # Convert df to long format
 long_clean_data <- clean_data %>%
   pivot_longer(
@@ -1069,112 +1121,125 @@ long_clean_data <- long_clean_data %>%
   )
 
 # Linear model for comparison with the gam model
-mod.linear_mem <- gam(memory ~ age + study, data = long_clean_data)
-aic_lm_mem <- AIC(mod.linear_mem)
-bic_lm_mem <- BIC(mod.linear_mem)
+mod_lme_mem <- lmer(memory ~ age + (1|id) + study, data = long_clean_data)
+aic_lm_mem <- AIC(mod_lme_mem)
+bic_lm_mem <- BIC(mod_lme_mem)
 
-mod.linear_hc <- gam(adj_HIP_total ~ age + study, data = long_clean_data)
-aic_lm_hc <- AIC(mod.linear_hc)
-bic_lm_hc <- BIC(mod.linear_hc)
+mod_lme_hc <- lmer(adj_HIP_total ~ age + (1|id) + study, data = long_clean_data)
+aic_lm_hc <- AIC(mod_lme_hc)
+bic_lm_hc <- BIC(mod_lme_hc)
 
 # Get the regression stats
 age <- c("scale(age)")
 
-mem_age_lin <- get_regression_stats(scale(memory) ~ scale(age) + study, data = long_clean_data, age)
-hc_age_lin <- get_regression_stats(scale(adj_HIP_total) ~ scale(age) + study, data = long_clean_data, age)
+suppressMessages({
+  mem_age_lme <- get_mixed_effects_stats(scale(memory) ~ scale(age) + (1|id) + study, data = long_clean_data, age)
+  hc_age_lme <- get_mixed_effects_stats(scale(adj_HIP_total) ~ scale(age) + (1|id) + study, data = long_clean_data, age)
+})
 ```
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
-# Function to calculate and store gam model metrics
-get_gam_metrics <- function(k, df, response_var, linear_mod) {
+# Function to calculate and store gamm model metrics
+get_gamm_metrics <- function(k, df, response_var, lme_mod) {
   max_k <- min(k, length(unique(df$age)) - 1)
 
   if (max_k > 1) {
-    # Dynamically use the response variable
-    mod.em <- gam(as.formula(paste(response_var, "~ s(age, k =", max_k, ") +", make.names("study"))), data = df)
+    # Dynamically use the response variable and correct random effect
+    mod_em <- gamm4(as.formula(paste(response_var, "~ s(age, k =", max_k, ") +", make.names("study"))),
+                    data = df, random = ~(1|id)) # Assuming 'id' is your random effect variable
 
     # Calculate required metrics
-    aic <- AIC(mod.em)
-    bic <- BIC(mod.em)
-    loglik <- logLik(mod.em)
+    aic <- AIC(mod_em$mer)
+    bic <- BIC(mod_em$mer)
+    loglik <- logLik(mod_em$mer)
+
+    # Extract EDF
+    edf <- sum(summary(mod_em$gam)$edf)
+    
+    # Calculate p-value for the GAMM terms
+    gamm_summary <- summary(mod_em$gam)
+    p_value_gamm <- gamm_summary$s.pv 
 
     # Likelihood ratio test
-    lrt_stat <- -2 * (logLik(linear_mod) - loglik) # Comparing the linear to the gam model
-    lrt_df <- df.residual(linear_mod) - mod.em$df.residual
-    p_value <- 1 - pchisq(lrt_stat, lrt_df)
+    lrt_stat <- -2 * (logLik(lme_mod) - loglik) # Comparing the lme to the gamm model
+    lrt_df <- df.residual(lme_mod) - df.residual(mod_em$mer)
+    p_value_lrt <- 1 - pchisq(lrt_stat, lrt_df)
 
     # Return a named list of metrics
     return(data.frame(
-      k = max_k, AIC = aic, BIC = bic, lrt_df = lrt_df,
-      logLik = loglik, "LRT test stat" = lrt_stat, "p-value" = as.numeric(p_value)
+      k = max_k, AIC = aic, BIC = bic, LogLik = loglik,
+      EDF = edf, LRT_df = lrt_df, "LRT test stat" = lrt_stat, 
+      "p_value_gamm" = as.numeric(p_value_gamm),
+      "p_value_lrt" = as.numeric(p_value_lrt)
     ))
+
   } else {
     return(data.frame(
       k = max_k, AIC = NA, BIC = NA,
-      logLik = NA, "LRT test stat" = NA, "p_value" = NA
+      LogLik = NA, EDF = NA, "LRT test stat" = NA, 
+      "p_value_gamm" = NA, "p_value_lrt" = NA
     ))
   }
 }
 
-# Memory
-# Apply function over the range of k values for different response variables
-k_range <- 4
-gam.compare.em_memory <- do.call(rbind, lapply(k_range, get_gam_metrics, long_clean_data, "memory", mod.linear_mem))
+# Define the range of k values
+k_range <- 13
 
-# HC
-k_range <- 4
-gam.compare.em_adj_hc <- do.call(rbind, lapply(k_range, get_gam_metrics, df = long_clean_data, response_var = "adj_HIP_total", mod.linear_hc))
+# Function to fit and compare models over k range for different response variables
+gamm_compare <- function(response_var, mod_lme) {
+  compare_gamm <- do.call(rbind, lapply(k_range, function(k) {
+    get_gamm_metrics(k, long_clean_data, response_var, mod_lme)
+  }))
+  return(compare_gamm)
+}
 
-# Save the LRT p_values to use in the FDR correction
-gam.compare.em_adj_hc$p_value <- gam.compare.em_adj_hc$p.value
-gam.compare.em_memory$p_value <- gam.compare.em_memory$p.value
+# Uncomment this code to check GAMM assumptions
+# gamm_memory <- gamm4(memory ~ 1 + s(age, k = 12) + study, data = long_clean_data, random = ~(1|id))
+# gam.check(gamm_memory$gam)
+# 
+# gamm_hc <- gamm4(adj_HIP_total ~ 1 + s(age, k = 12) + study, data = long_clean_data, random = ~(1|id))
+# gam.check(gamm_hc$gam)
 
-# Get the EDF
-gamm_memory <- gam(memory ~ s(age, k = 4) + study, data = long_clean_data)
-summary_memory <- summary(gamm_memory)
-gamm_hc <- gam(adj_HIP_total ~ s(age, k = 4) + study, data = long_clean_data)
-summary_hc <- summary(gamm_hc)
-
-# Save the EDF p_values to use in the FDR correction
-summary_memory$p_value <- summary_memory$s.table["s(age)", "p-value"]
-summary_hc$p_value <- summary_hc$s.table["s(age)", "p-value"]
+# Run the comparison for memory and adjusted HIP
+gamm_compare_em_memory <- gamm_compare("memory", mod_lme_mem)
+gamm_compare_em_adj_hc <- gamm_compare("adj_HIP_total", mod_lme_hc)
 ```
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
-gam_table <- data.frame(
+gamm_table <- data.frame(
   " " = c(
-    " ",
-    "**GAM**",
-    "**Linear Model**"
+    "",
+    "**GAMM**",
+    "**LME Model**"
   ),
   "**Memory**" = c(
     "_AIC_",
-    paste0(round(gam.compare.em_memory$AIC, 3)),
+    paste0(round(gamm_compare_em_memory$AIC, 3)),
     paste0(round(aic_lm_mem, 3))
   ),
   " " = c(
     "_BIC_",
-    paste0(round(gam.compare.em_memory$BIC, 3)),
+    paste0(round(gamm_compare_em_memory$BIC, 3)),
     paste0(round(bic_lm_mem, 3))
   ),
   " " = c(
-    "_LRT Adjusted p-value_",
-    format_p_value(p_value_df[p_value_df$model_name == "gam.compare.em_memory", "adjusted_p_value"]),
+    "_LRT p-value_",
+    format_p_value(gamm_compare_em_memory$p_value_lrt),
     " "
   ),
   "**Adjusted Hippocampus**" = c(
     "_AIC_",
-    paste0(round(gam.compare.em_adj_hc$AIC, 3)),
+    paste0(round(gamm_compare_em_adj_hc$AIC, 3)),
     paste0(round(aic_lm_hc, 3))
   ),
   " " = c(
     "_BIC_",
-    paste0(round(gam.compare.em_adj_hc$BIC, 3)),
+    paste0(round(gamm_compare_em_adj_hc$BIC, 3)),
     paste0(round(bic_lm_hc, 3))
   ),
   " " = c(
-    "_LRT Adjusted p-value_",
-    format_p_value(p_value_df[p_value_df$model_name == "gam.compare.em_adj_hc", "adjusted_p_value"]),
+    "_LRT p-value_",
+    format_p_value(gamm_compare_em_adj_hc$p_value_lrt),
     " "
   )
 )
@@ -1182,12 +1247,12 @@ gam_table <- data.frame(
 
 We compared a linear and GAM fit to the memory/adjusted hippocampus volume and age data, while controlling for cohort/MRI scanner. To assess model performance, we used the Akaike Information Criterion (AIC), Bayesian Information Criterion (BIC), and a likelihood ratio test (LRT) to compare the GAM and linear models (Supplementary Table 1). The LRT evaluates whether the inclusion of non-linear terms enhances model fit, with a significant result indicating a preferable fit for the GAM. The AIC and BIC also help identify the preferred model, with a difference of 10 or more favoring the model with lower values.
 
-We initially fit the GAM using a range of basis functions and compared their fit to the linear model. Despite variations in the GAM fit, the conclusions regarding how the GAM and the linear compared did not change. In Supplementary Table 1, we fit the GAMs with four basis functions as increasing the number beyond this point did not substantially change the AIC nor BIC values. The smooth age-term was significant in the memory GAM (effective degrees of freedom (EDF) = `r round(summary_memory$s.table["s(age)", "edf"], 3)`, _p_-value = `r format_p_value(summary_memory$s.table["s(age)", "p-value"])`, _p_<sub>FDR</sub> = `r format_p_value(p_value_df[p_value_df$model_name == "summary_memory", "adjusted_p_value"])`) and the hippocampus GAM (EDF = `r round(summary_hc$s.table["s(age)", "edf"], 3)`, _p_-value = `r format_p_value(summary_hc$s.table["s(age)", "p-value"])`, _p_<sub>FDR</sub> = `r format_p_value(p_value_df[p_value_df$model_name == "summary_hc", "adjusted_p_value"])`). For the linear models, both models had significant age coefficients (memory: β = `r round(mem_age_lin$coef, 3)`, _p_ = `r format(format_p_value(mem_age_lin$p_value), scientific = FALSE)`, _p_<sub>FDR</sub> = `r format_p_value(p_value_df[p_value_df$model_name == "mem_age_lin", "adjusted_p_value"])`; adjusted hippocampal volume β = `r round(hc_age_lin$coef, 3)`, _p_ = `r format(format_p_value(hc_age_lin$p_value), scientific = FALSE)`, _p_<sub>FDR</sub> = `r format_p_value(p_value_df[p_value_df$model_name == "hc_age_lin", "adjusted_p_value"])`). For memory, the linear and GAM fits were similar; however, the linear fit was better according to BIC and LRT. For adjusted hippocampal volume, the GAM fit was better according to AIC and LRT.
+We initially fit the GAMM using a range of basis functions and compared their fit to the linear model. Despite variations in the GAMM fit, the conclusions regarding how the GAMM and the linear compared did not change. In Supplementary Table 1, we fit the GAMMs with four basis functions as increasing the number beyond this point did not substantially change the AIC nor BIC values. The smooth age-term was significant in the memory GAMM (effective degrees of freedom (EDF) = `r round(gamm_compare_em_memory$EDF, 3)`, _p_-value = `r format_p_value(gamm_compare_em_memory$p_value_gamm)` and the hippocampus GAMM (EDF = `r round(gamm_compare_em_adj_hc$EDF, 3)`, _p_-value = `r format_p_value(gamm_compare_em_adj_hc$p_value_gamm)`. For the linear models, both models had significant age coefficients (memory: β = `r round(mem_age_lme$coef, 3)`, _p_ = `r format(format_p_value(mem_age_lme$p_value), scientific = FALSE)`; adjusted hippocampal volume β = `r round(hc_age_lme$coef, 3)`, _p_ = `r format(format_p_value(hc_age_lme$p_value), scientific = FALSE)`). For memory, the linear and GAMM fits were similar; however, the linear fit was better according to BIC and LRT. For adjusted hippocampal volume, the GAMM fit was better according to AIC and LRT.
 
 __Supplementary Table 1__: _GAM vs Linear Model_
 ```{r suptab1, echo=FALSE} 
 # Format and print the table
-kable(gam_table, format = "markdown", col.names = c(" ", "**Memory**", " ", " ", "**Adjusted Hippocampus**", " ", " "))
+kable(gamm_table, format = "markdown", col.names = c(" ", "**Memory**", " ", " ", "**Adjusted Hippocampus**", " ", " "))
 ```
 Note. Models are adjusted for cohort/MRI scanner. _p_-values are adjusted for multiple comparisons using the FDR. Abbreviations: GAM General Additive Model, AIC Akaike Information Criterion, BIC Bayesian Information Criterion, LRT Likelihood Ratio Test
 
@@ -1204,12 +1269,15 @@ long_clean_data$res_age <- residuals(residual_model_age)
 long_clean_data$res_mem <- residuals(residual_model_mem)
 long_clean_data$res_hc <- residuals(residual_model_hc)
 
+# Define colors 
+color_palette <- c("indianred2", "steelblue2", "#86db49", "#F7CA18", "blue", "black")
+
 # Create the plot age v memory
 mem_age <- ggplot(long_clean_data, aes(x = age, y = memory, color = Study, group = id)) +
   geom_line(size = 0.4) +
   geom_point(size = 0.6) +
   scale_color_manual(values = color_palette) +
-  geom_smooth(method = "lm", aes(group = 1), color = "grey", se = TRUE) +
+  geom_smooth(method = "gam", formula = y ~ s(x, k = 24, bs = "cs"), aes(group = 1), color = "grey", se = TRUE) +
   labs(x = "Age", y = "Episodic Memory", color = "Cohort") +
   theme_minimal() +
   theme(legend.position = "bottom")
@@ -1219,7 +1287,7 @@ hc_age <- ggplot(long_clean_data, aes(x = age, y = adj_HIP_total, color = Study,
   geom_line(size = 0.4) +
   geom_point(size = 0.6) +
   scale_color_manual(values = color_palette) +
-  geom_smooth(method = "gam", formula = y ~ s(x, k = 13, bs = "cs"), aes(group = 1), color = "grey", se = TRUE) +
+  geom_smooth(method = "gam", formula = y ~ s(x, k = 24, bs = "cs"), aes(group = 1), color = "grey", se = TRUE) +
   labs(x = "Age", y = "Adjusted Hippocampal Volume", color = "Cohort") +
   theme_minimal() +
   theme(legend.position = "none") # Remove legend for the second plot
@@ -1238,9 +1306,9 @@ vars_unscale <- c(
   "age"
 )
 
-mem_age_unscaled <- get_regression_stats((memory) ~ age + study, data = long_clean_data, vars_unscale)
+mem_age_unscaled <- get_mixed_effects_stats((memory) ~ age + (1|id) + study, data = long_clean_data, vars_unscale)
 ```
-<small>(A) The association between memory and age with individual trajectories and a linear model displaying a coefficient of `r round(mem_age_unscaled$coef, 3)` (scaled: `r round(mem_age_lin$coef, 3)`) and confidence intervals. (B) The association between adjusted hippocampal volume and age with individual trajectories with a generalized additive model (EDF = `r round(summary_hc$s.table["s(age)", "edf"], 3)`) and confidence intervals.</small>
+<small>(A) The association between memory and age with individual trajectories and a generalized additive model (EDF = `r round(gamm_compare_em_memory$EDF, 3)`) and confidence intervals. (B) The association between adjusted hippocampal volume and age with individual trajectories with a generalized additive model (EDF = `r round(gamm_compare_em_adj_hc$EDF, 3)`) and confidence intervals.</small>
 
 **_Cross-sectional BM / CR and Functional Connectivity_**
 
@@ -1419,56 +1487,81 @@ Note. Models are adjusted for cohort/MRI scanner. _p_-values are adjusted for mu
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 # Correcting for p-values
-models <- list(
-  gam.compare.em_memory, gam.compare.em_adj_hc,
-  emhp_merged, model_baseline, model_followup,
-  edu_baseline, edu_followup, edu_long, edu_cr, edu_bm, edu_cr_int, edu_bm_int,
-  cr_validation, bm_age_lm, cr_age_lm, resilience_lm,
+
+# Memory, Hippocampus and Analyses
+memory_hippocampus_models <- list(
+  emhp_merged, model_baseline, model_followup
+)
+
+# Education Analyses
+education_models <- list(
+  edu_baseline, edu_followup, edu_long, edu_cr, edu_bm, edu_cr_int, edu_bm_int
+)
+
+# CR and BM Analyses
+cr_bm_models <- list(
+  cr_validation, bm_age_lme, cr_age_lme, resilience_lme
+)
+
+# Functional Connectivity Analyses Longitudinal
+functional_connectivity_long <- list(
   bm_dmn_stats, bm_dmn, bm_ecn_stats, bm_ec, bm_sn_stats, bm_sn,
-  cr_dmn_stats, cr_dmn, cr_ecn_stats, cr_ec, cr_sn_stats, cr_sn,
+  cr_dmn_stats, cr_dmn, cr_ecn_stats, cr_ec, cr_sn_stats, cr_sn
+)
+
+# Functional Connectivity Analyses Cross-sectional
+functional_connectivity_cs <- list(
   cr_dmn_bl, cr_dmn_fu, cr_dmn_stats_bl, cr_dmn_stats_fu,
   cr_ec_bl, cr_ec_fu, cr_ecn_stats_bl, cr_ecn_stats_fu,
   cr_sn_bl, cr_sn_fu, cr_sn_stats_bl, cr_sn_stats_fu,
   bm_dmn_bl, bm_dmn_fu, bm_dmn_stats_bl, bm_dmn_stats_fu,
   bm_ec_bl, bm_ec_fu, bm_ecn_stats_bl, bm_ecn_stats_fu,
-  bm_sn_bl, bm_sn_fu, bm_sn_stats_bl, bm_sn_stats_fu,
-  summary_memory, summary_hc,
-  hc_age_lin, mem_age_lin
+  bm_sn_bl, bm_sn_fu, bm_sn_stats_bl, bm_sn_stats_fu
+)
+# Model Comparisons and General Analyses
+model_comp_general_models <- list(
+  gamm_compare_em_memory, gamm_compare_em_adj_hc,
+  hc_age_lme, mem_age_lme
 )
 
-model_names <- c(
-  "gam.compare.em_memory", "gam.compare.em_adj_hc",
-  "emhp_merged", "model_baseline", "model_followup",
-  "edu_baseline", "edu_followup", "edu_long", "edu_cr", "edu_bm", "edu_cr_int", "edu_bm_int",
-  "cr_validation", "bm_age_lm", "cr_age_lm", "resilience_lm",
-  "bm_dmn_stats", "bm_dmn", "bm_ecn_stats", "bm_ec", "bm_sn_stats", "bm_sn",
-  "cr_dmn_stats", "cr_dmn", "cr_ecn_stats", "cr_ec", "cr_sn_stats", "cr_sn",
-  "cr_dmn_bl", "cr_dmn_fu", "cr_dmn_stats_bl", "cr_dmn_stats_fu",
-  "cr_ec_bl", "cr_ec_fu", "cr_ecn_stats_bl", "cr_ecn_stats_fu",
-  "cr_sn_bl", "cr_sn_fu", "cr_sn_stats_bl", "cr_sn_stats_fu",
-  "bm_dmn_bl", "bm_dmn_fu", "bm_dmn_stats_bl", "bm_dmn_stats_fu",
-  "bm_ec_bl", "bm_ec_fu", "bm_ecn_stats_bl", "bm_ecn_stats_fu",
-  "bm_sn_bl", "bm_sn_fu", "bm_sn_stats_bl", "bm_sn_stats_fu",
-  "summary_memory", "summary_hc",
-  "hc_age_lin", "mem_age_lin"
-)
-
-# Function to extract p-values
+# Define a function to extract p-values
 extract_p_value <- function(model) {
-  model$p_value
+  # Check if the model contains p-value information and return it
+  if ("p_value" %in% names(model)) {
+    return(model[["p_value"]])
+  } else {
+    return(NULL) # Return NULL if neither is found
+  }
 }
 
-p_values <- unlist(lapply(models, extract_p_value))
+adjust_p_values <- function(models, model_names) {
+  p_values <- unlist(lapply(models, extract_p_value))
+  p_adjusted <- p.adjust(p_values, method = "fdr")
+  
+  data.frame(
+    model_name = model_names,
+    original_p_value = format(p_values, digits = 3, scientific = FALSE, na.encode=TRUE),
+    adjusted_p_value = format(p_adjusted, digits = 3, scientific = FALSE, na.encode=TRUE)
+  )
+}
 
-# Apply FDR correction using the Benjamini-Hochberg method
-p_adjusted <- p.adjust(p_values, method = "fdr")
+# Adjust p-values for each group
+memory_hippocampus_p_values <- adjust_p_values(memory_hippocampus_models, c("emhp_merged", "model_baseline", "model_followup"))
+education_p_values <- adjust_p_values(education_models, c("edu_baseline", "edu_followup", "edu_long", "edu_cr", "edu_bm", "edu_cr_int", "edu_bm_int"))
+cr_bm_p_values <- adjust_p_values(cr_bm_models, c("cr_validation", "bm_age_lme", "cr_age_lme", "resilience_lme"))
+functional_connectivity_long_p_values <- adjust_p_values(functional_connectivity_long, c("bm_dmn_stats", "bm_dmn", "bm_ecn_stats", "bm_ec", "bm_sn_stats", "bm_sn", "cr_dmn_stats", "cr_dmn", "cr_ecn_stats", "cr_ec", "cr_sn_stats", "cr_sn"))
+functional_connectivity_cs_p_values <- adjust_p_values(functional_connectivity_cs, c("cr_dmn_bl", "cr_dmn_fu", "cr_dmn_stats_bl", "cr_dmn_stats_fu", "cr_ec_bl", "cr_ec_fu", "cr_ecn_stats_bl", "cr_ecn_stats_fu", "cr_sn_bl", "cr_sn_fu", "cr_sn_stats_bl", "cr_sn_stats_fu", "bm_dmn_bl", "bm_dmn_fu", "bm_dmn_stats_bl", "bm_dmn_stats_fu", "bm_ec_bl", "bm_ec_fu", "bm_ecn_stats_bl", "bm_ecn_stats_fu", "bm_sn_bl", "bm_sn_fu", "bm_sn_stats_bl", "bm_sn_stats_fu"))
 
-# Create a data frame combining model names, original p-values, and adjusted p-values
-p_value_df <- data.frame(
-  model_name = model_names,
-  original_p_value = format(p_values, scientific = FALSE),
-  adjusted_p_value = format(p_adjusted, scientific = FALSE)
+# Combine all results
+p_value_df <- rbind(
+  memory_hippocampus_p_values,
+  education_p_values,
+  cr_bm_p_values,
+  functional_connectivity_long_p_values,
+  functional_connectivity_cs_p_values
 )
 
+# Output the combined p-values
 write.csv(p_value_df, file = "/tsd/p274/data/durable/projects/p027-cr_bm/p_value.csv")
 ```
+
