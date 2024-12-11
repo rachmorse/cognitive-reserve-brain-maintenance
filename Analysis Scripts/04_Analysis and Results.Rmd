@@ -1,9 +1,9 @@
 ---
 title: "Results"
 output:
+  word_document: default
   html_document:
     df_print: paged
-  word_document: default
 ---
 
 ```{r setup, include=FALSE}
@@ -423,13 +423,11 @@ sd_bm <- sd(clean_data$reverse_bm, na.rm = TRUE)
 # Calculate the combined CR and BM value
 clean_data <- clean_data %>%
   mutate(
-    total_cr_bm = reverse_cr + reverse_bm,
+    total_cr_or_bm = ifelse(reverse_bm > reverse_cr, reverse_bm, -reverse_cr),
     closer_to = ifelse(reverse_bm > reverse_cr, "BM", "CR"),
     distance_from_midline = ifelse(closer_to == "BM", (reverse_bm / reverse_cr), (-(reverse_cr / reverse_bm)))
   )
 
-mean_total_cr_bm <- mean(clean_data$total_cr_bm, na.rm = TRUE)
-sd_total_cr_bm <- sd(clean_data$total_cr_bm, na.rm = TRUE)
 mean_distance_midline <- mean(clean_data$distance_from_midline, na.rm = TRUE)
 sd_distance_midline <- sd(clean_data$distance_from_midline, na.rm = TRUE)
 
@@ -450,21 +448,20 @@ cr_var <- c(
 
 # Running the regression model
 cr_validation <- get_regression_stats(scale(memory_slopes) ~ scale(hc_slopes) + scale(reverse_cr) + study + scale(age_baseline) + scale(mem_time) + sex + scale(edu), data = clean_data, cr_var)
-
-# Running the moderation model
-# cr_validation <- get_regression_stats(scale(memory_slopes) ~ scale(hc_slopes) * scale(reverse_cr) + study + scale(age_baseline) + scale(mem_time) + sex + scale(edu), data = clean_data, cr_var)
 ```
+
 __**CR and BM Variables and Index:**__
 
 We established CR (mean = `r round(mean_cr, 3)`, SD = `r round(sd_cr, 3)`) and BM (mean = `r round(mean_bm, 3)`, SD = `r round(sd_bm, 3)`) variables (Figure 3). In a model with hippocampal annual change included, we found that CR remained a  significant predictor of memory annual change (β = `r round(cr_validation$coef, 3)`, _p_ = `r format_p_value(cr_validation$p_value)`, _p_<sub>FDR</sub> = `r format_p_value(p_value_df[p_value_df$model_name == "cr_validation", "adjusted_p_value"])`, r² = `r round(emhp_merged$r2, 3)`).
 
 ```{r echo=FALSE, warning=FALSE}
-custom_colors <- c("purple", "#6a4c93", "#4267ac", "#1982c4", "#52a675", "#8ac926", "#c5ca30", "#ffca3a", "#ff924c", "#ff595e")
+custom_colors_bm <- c("#E5E483", "#8ac926", "#4CCD99", "#5BBCFF", "#024CAA", "#00224D")
+custom_colors_cr <- c("#f5d7b0", "#f5be27", "#fa8d00", "#bc507f", "#7E1891", "#1c0159") 
 
 cr_plot <- ggplot(clean_data, aes(y = res_mem_slopes, x = res_hc_slopes, color = (reverse_cr))) +
   geom_point(size = 2) +
   scale_color_gradientn(
-    colors = custom_colors,
+    colors = custom_colors_cr,
     limits = c(0.55, 2.59),
     values = c(0, 1 / 3, 2 / 3, 1) # Values mapped to scale so both figures have the same scale
   ) +
@@ -482,7 +479,7 @@ cr_plot <- ggplot(clean_data, aes(y = res_mem_slopes, x = res_hc_slopes, color =
 bm_plot <- ggplot(clean_data, aes(y = res_mem_slopes, x = res_hc_slopes, color = reverse_bm)) +
   geom_point(size = 2) +
   scale_color_gradientn(
-    colors = custom_colors,
+    colors = custom_colors_bm,
     limits = c(0.5, 2.6),
     values = c(0, 1 / 3, 2 / 3, 1) # Values mapped to scale so both figures have the same scale
   ) +
@@ -514,51 +511,84 @@ combined_crbm
 
 <small>(A) The association between hippocampus annual change and memory annual change, adjusted for cohort/MRI scanner, depicted with a diagonal line representing the BM line. The color code represents the level of BM for a given participant. (B) The same association between hippocampus annual change and memory annual change, adjusted for cohort/MRI scanner, this time depicted with a diagonal line representing the CR line. The color code represents the level of CR for a given participant.</small>
 
-We then created the CR and BM index with participants classified as on the CR pathway (N = `r cr_pathway`/`r total_participants`) or the BM pathway (N = `r bm_pathway`/`r total_participants`) (Figure 4). The mean level of the calculated resilience variable was `r round(mean_total_cr_bm, 3)` (SD = `r round(sd_total_cr_bm, 3)`) and the mean absolute index value was `r round(mean_distance_midline, 3)` (SD = `r round(sd_distance_midline, 3)`).
+We then created the CR and BM index with participants classified as on the CR pathway (N = `r cr_pathway`/`r total_participants`) or the BM pathway (N = `r bm_pathway`/`r total_participants`) (Figure 4). The mean absolute index value was `r round(mean_distance_midline, 3)` (SD = `r round(sd_distance_midline, 3)`).
 
 ```{r echo=FALSE, warning=FALSE}
 # Create breaks for the graph looks nice
 breaks_values <- c(seq(-5, 5, by = 1), 0)
 breaks_values <- sort(unique(breaks_values))
 
-index_plot <- ggplot(clean_data, aes(x = index, y = total_cr_bm, fill = closer_to)) +
-  geom_point(aes(color = closer_to), shape = 21, size = 3, position = position_jitter(width = 0.01)) +
-  scale_fill_manual(values = c("BM" = "#AD88C6", "CR" = "#A1D6B2")) +
+# index_plot <- ggplot(clean_data, aes(x = index, y = total_cr_or_bm, fill = closer_to)) +
+#   geom_point(aes(color = closer_to), shape = 21, size = 3, position = position_jitter(width = 0.01)) +
+#   scale_fill_manual(values = c("BM" = "#AD88C6", "CR" = "#A1D6B2")) +
+#   scale_color_manual(values = c("BM" = "#000000", "CR" = "#000000")) +
+#   # facet_zoom(xlim = c(-0.5, 0.5)) + # Add this for the plot to zoom in in a 2nd variation
+#   scale_x_continuous(
+#     name = "Index Value",
+#     breaks = breaks_values,
+#     labels = scales::label_number(accuracy = .1),
+#     expand = c(0, 0),
+#     limits = c(-2.2, 2.2) # Set x-axis limits explicitly
+#   ) +
+#   labs(
+#     title = "Cognitive Reserve / Brain Maintenance Index",
+#     y = "Total CR or BM",
+#     fill = "Pathway",
+#     color = "Pathway"
+#   ) +
+#   theme_minimal() +
+#   theme(
+#     axis.text.y = element_text(),
+#     axis.ticks.y = element_line(),
+#     panel.grid.major.y = element_line(),
+#     panel.grid.minor.y = element_blank(),
+#     legend.position = "bottom",
+#     plot.margin = margin(t = 0.25, r = 0.25, b = 0.25, l = 0.25, unit = "cm"),
+#     axis.text.x = element_text(margin = margin(t = -5)),
+#     plot.title = element_text(hjust = 0.5),
+#   )
+
+index_plot <- ggplot(clean_data, aes(x = total_cr_or_bm, y = 0, fill = closer_to)) +
+  annotate("rect", xmin = 0, xmax = Inf, ymin = -Inf, ymax = Inf, alpha = 0.2, fill = "#d7eaf5") +
+  annotate("rect", xmin = -Inf, xmax = 0, ymin = -Inf, ymax = Inf, alpha = 0.2, fill = "#ffcfcf") +
+  annotate("text", x = -1.5, y = 1.9, label = "CR Pathway", color = "black", size = 4, hjust = 0.5) +
+  annotate("text", x = 1.5, y = 1.9, label = "BM Pathway", color = "black", size = 4, hjust = 0.5) +
+  geom_violin(trim = FALSE, scale = "width", width = 4, position = position_identity()) +
+  geom_jitter(aes(color = closer_to), shape = 21, size = 2.5, width = 0, height = 1) +
+  scale_fill_manual(values = c("BM" = "#91c4e3", "CR" = "#FFAAAA")) +
   scale_color_manual(values = c("BM" = "#000000", "CR" = "#000000")) +
-  # facet_zoom(xlim = c(-0.5, 0.5)) + # Add this for the plot to zoom in in a 2nd variation
   scale_x_continuous(
     name = "Index Value",
     breaks = breaks_values,
-    labels = scales::label_number(accuracy = .1),
+    labels = scales::label_number(accuracy = 0.1),
     expand = c(0, 0),
-    limits = c(-2.2, 2.2) # Set x-axis limits explicitly
+    limits = c(-2.7, 2.7)
+  ) +
+  scale_y_continuous(
+    limits = c(0, 2.1),
+    expand = c(0, 0)
   ) +
   labs(
-    title = "Cognitive Reserve / Brain Maintenance Index",
-    y = "Resilience",
-    fill = "Pathway",
-    color = "Pathway"
+    fill = NULL,
+    y = "Density",
+    color = NULL
   ) +
   theme_minimal() +
   theme(
-    axis.text.y = element_text(),
-    axis.ticks.y = element_line(),
-    panel.grid.major.y = element_line(),
-    panel.grid.minor.y = element_blank(),
-    legend.position = "bottom",
-    plot.margin = margin(t = 0.25, r = 0.25, b = 0.25, l = 0.25, unit = "cm"),
-    axis.text.x = element_text(margin = margin(t = -5)),
-    plot.title = element_text(hjust = 0.5),
+    legend.position = "none",
+    plot.background = element_rect(fill = "white", color = "white"),
+    plot.margin = margin(t = 0.35, r = 0.35, b = 0.35, l = 0, unit = "cm"),
+    plot.title = element_text(hjust = 0.5)
   )
 ```
 
 __Figure 4:__ _Index of Brain Maintenance and Cognitive Reserve_
 
-```{r fig3, echo=FALSE, dpi = 400, fig.width=8, fig.height=3, message=FALSE, warning=FALSE}
+```{r fig3, echo=FALSE, dpi = 400, fig.width=8, fig.height=2, message=FALSE, warning=FALSE}
 index_plot
 ```
 
-An index depicting participants as either on the BM or CR pathway. The x-axis represents the index value – the ratio of CR to BM for participants with more CR and the ratio of BM to CR for participants with more BM. The y-axis represents the level of resilience or the total value of CR plus BM.
+An index depicting participants as either on the BM or CR pathway. The x-axis represents the index value – the ratio of CR to BM for participants with more CR and the ratio of BM to CR for participants with more BM. The y-axis represents the total CR for those on the CR path or the total BM for those of the BM path.
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 # Add a function for getting the stats from LME models
@@ -595,11 +625,18 @@ get_mixed_effects_stats <- function(formula, data, vars_priority) {
   return(list(coef = coef, ci = ci, p_value = p_value, r2 = r2))
 }
 
-# Divide the continuous variable into groups to be able to better visualize the data
-clean_data$resilience <- cut(clean_data$total_cr_bm,
-  breaks = quantile(clean_data$total_cr_bm, probs = seq(0, 1, (1 / 2)), na.rm = TRUE),
+# Do the same for CR 
+clean_data$reverse_cr_group <- cut(clean_data$reverse_cr,
+  breaks = quantile(clean_data$reverse_cr, probs = seq(0, 1, (1 / 2)), na.rm = TRUE),
   include.lowest = TRUE,
-  labels = c("Low Resilience", "High Resilience")
+  labels = c("Low CR", "High CR")
+)
+
+# And for BM
+clean_data$reverse_bm_group <- cut(clean_data$reverse_bm,
+  breaks = quantile(clean_data$reverse_bm, probs = seq(0, 1, (1 / 2)), na.rm = TRUE),
+  include.lowest = TRUE,
+  labels = c("Low BM", "High BM")
 )
 
 # Convert df to long
@@ -619,17 +656,10 @@ long_data_vis <- long_data_vis %>%
 
 # Set a list of priority variables
 vars <- c(
-  "scale(age):scale(total_cr_bm)",
   "scale(age):scale(reverse_cr)",
   "scale(age):scale(reverse_bm)"
 )
 
-resilience_lme <- get_mixed_effects_stats(
-  scale(memory) ~ scale(age) * scale(total_cr_bm) + study + scale(age_baseline) +
-    scale(mem_time) + sex + scale(edu) + (1 | id),
-  long_data_vis,
-  vars
-)
 cr_age_lme <- get_mixed_effects_stats(
   scale(memory) ~ scale(age) * scale(reverse_cr) + study + scale(age_baseline) +
     scale(mem_time) + sex + scale(edu) + (1 | id),
@@ -645,23 +675,13 @@ bm_age_lme <- get_mixed_effects_stats(
 )
 ```
 
-We then found a significant interaction between resilience and age on memory (β = `r round(resilience_lme$coef, 3)`, _p_ = `r format_p_value(resilience_lme$p_value)`, _p_<sub>FDR</sub> = `r format_p_value(p_value_df[p_value_df$model_name == "resilience_lme", "adjusted_p_value"])`, r² = `r round(resilience_lme$r2, 3)`) (Figure 5). We also found a significant interaction between CR and age (β = `r round(cr_age_lme$coef, 3)`, _p_ = `r format_p_value(cr_age_lme$p_value)`, _p_<sub>FDR</sub> = `r format_p_value(p_value_df[p_value_df$model_name == "cr_age_lme", "adjusted_p_value"])`, r² = `r round(cr_age_lme$r2, 3)`) and BM and age (β = `r round(bm_age_lme$coef, 3)`, _p_ = `r format_p_value(bm_age_lme$p_value)`, _p_<sub>FDR</sub> = `r format_p_value(p_value_df[p_value_df$model_name == "bm_age_lme", "adjusted_p_value"])`, r² = `r round(bm_age_lme$r2, 3)`) on memory (Table 5). 
+We then found a significant interaction between CR and age (β = `r round(cr_age_lme$coef, 3)`, _p_ = `r format_p_value(cr_age_lme$p_value)`, _p_<sub>FDR</sub> = `r format_p_value(p_value_df[p_value_df$model_name == "cr_age_lme", "adjusted_p_value"])`, r² = `r round(cr_age_lme$r2, 3)`) and BM and age (β = `r round(bm_age_lme$coef, 3)`, _p_ = `r format_p_value(bm_age_lme$p_value)`, _p_<sub>FDR</sub> = `r format_p_value(p_value_df[p_value_df$model_name == "bm_age_lme", "adjusted_p_value"])`, r² = `r round(bm_age_lme$r2, 3)`) on memory (Table 5). 
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 # Create the table
-table_resilience <- data.frame(
+table_cr_bm_age <- data.frame(
   " " = c(
     "", "**Memory**"
-  ),
-  "**Resilience * Age**" = c(
-    "_Coefficient (95% CI)_",
-    paste0(round(resilience_lme$coef, 3), " (", round(resilience_lme$ci[1], 3), " to ", round(resilience_lme$ci[2], 3), ")")
-  ),
-  " " = c(
-    "_Adjusted p-value_", format_p_value(p_value_df[p_value_df$model_name == "resilience_lme", "adjusted_p_value"])
-  ),
-  " " = c(
-    "_R²_", round(resilience_lme$r2, 3)
   ),
   "**Cognitive Reserve * Age**" = c(
     "_Coefficient (95% CI)_",
@@ -686,10 +706,10 @@ table_resilience <- data.frame(
 )
 ```
 
-__Table 5__: _Linear Mixed Effects Models with Interactions between Age and Resilience, CR, or BM on Memory_
+__Table 5__: _Linear Mixed Effects Models with Interactions between Age and CR / BM on Memory_
 ```{r tab5, echo=FALSE} 
 # Format and print the table
-kable(table_resilience, format = "markdown", col.names = c(" ", "**Resilience * Age**", " ", " ", "**Cognitive Reserve * Age**", " ", " ", "**Brain Maintenance * Age**", " ", " "))
+kable(table_cr_bm_age, format = "markdown", col.names = c(" ", "**Brain Maintenance * Age**", " ", " ", "**Cognitive Reserve * Age**", " ", " "))
 ```
 Note. Models are adjusted for age, sex, education, follow-up time, and cohort/MRI scanner. _p_-values are adjusted for multiple comparisons using the FDR. Abbreviations: CI Confidence Interval
 
@@ -699,18 +719,18 @@ long_data_vis_res <- long_data_vis %>%
   filter(!is.na(age) & !is.na(memory))
 
 # Fit the mixed-effects model
-model_res_lme <- lmer(memory ~ age * resilience + (1 | id), data = long_data_vis)
+model_res_lme <- lmer(memory ~ age * reverse_cr_group + (1 | id), data = long_data_vis)
 
 # Define a range of ages for prediction
 age_seq <- seq(min(long_data_vis_res$age), max(long_data_vis_res$age), length.out = 100)
 
-# Generate predictions for each resilience group
-# Divides the low and high resilience groups into 100 age bands and,
+# Generate predictions for each CR group
+# Divides the low and high CR groups into 100 age bands and,
 # using the LME model from above, predicts their memory for each of the age bands
-predictions <- do.call(rbind, lapply(unique(long_data_vis_res$resilience), function(res) {
+predictions <- do.call(rbind, lapply(unique(long_data_vis_res$reverse_cr_group), function(res) {
   new_data <- data.frame(
     age = age_seq,
-    resilience = res,
+    reverse_cr_group = res,
     id = 1
   )
   pred <- predict(model_res_lme, newdata = new_data, se.fit = TRUE, re.form = NA)
@@ -722,47 +742,101 @@ predictions <- do.call(rbind, lapply(unique(long_data_vis_res$resilience), funct
   new_data
 }))
 
-# Define colors for each resilience group
-palette <- c("High Resilience" = "#1f77b4", "Low Resilience" = "#ff7f0e")
+# Define colors for each CR group
+palette <- c("High CR" = "#7E1891", "Low CR" = "#f5be27")
 
 # Create the plot
-resilience_plot <- ggplot() +
+cr_age_plot <- ggplot() +
   geom_line(data = long_data_vis_res, aes(x = age, y = memory, group = id), color = "lightgray", alpha = 0.5) + # Plot individual trajectories
   geom_point(data = long_data_vis_res, aes(x = age, y = memory), color = "gray", size = 1) + # Add scatter points
-  geom_ribbon(data = predictions, aes(x = age, ymin = lower_bound, ymax = upper_bound, fill = as.factor(resilience)), alpha = 0.3) + # Add CIs
-  geom_line(data = predictions, aes(x = age, y = predicted, color = as.factor(resilience)), size = 1.2) + # Plot predicted lines for each group
+  geom_ribbon(data = predictions, aes(x = age, ymin = lower_bound, ymax = upper_bound, fill = as.factor(reverse_cr_group)), alpha = 0.3) + # Add CIs
+  geom_line(data = predictions, aes(x = age, y = predicted, color = as.factor(reverse_cr_group)), size = 1.2) + # Plot predicted lines for each group
   scale_color_manual(values = palette) +
   scale_fill_manual(values = palette) + # Ensure fill colors match line colors
   labs(x = "Age", y = "Memory", color = "Group", fill = "Group") +
   theme_minimal() +
   theme(legend.position = "bottom")
 ```
-__Figure 5:__ _The Relationship Between Memory and Age Depicted by Resilience Group_
 
-```{r fig4, echo=FALSE, dpi = 400, fig.width=4, fig.height=4, message=FALSE, warning=FALSE}
-resilience_plot
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+# Fit the mixed-effects model
+model_res_lme <- lmer(memory ~ age * reverse_bm_group + (1 | id), data = long_data_vis)
+
+# Define a range of ages for prediction
+age_seq <- seq(min(long_data_vis_res$age), max(long_data_vis_res$age), length.out = 100)
+
+# Generate predictions for each BM group
+predictions <- do.call(rbind, lapply(unique(long_data_vis_res$reverse_bm_group), function(res) {
+  new_data <- data.frame(
+    age = age_seq,
+    reverse_bm_group = res,
+    id = 1
+  )
+  pred <- predict(model_res_lme, newdata = new_data, se.fit = TRUE, re.form = NA)
+  new_data$predicted <- pred$fit
+  new_data$se <- pred$se.fit
+  # Calculate 95% confidence intervals
+  new_data$lower_bound <- new_data$predicted - 1.96 * new_data$se
+  new_data$upper_bound <- new_data$predicted + 1.96 * new_data$se
+  new_data
+}))
+
+# Define colors for each BM group
+palette <- c("High BM" = "#1f77b4", "Low BM" = "#8ac926")
+
+# Create the plot
+bm_age_plot <- ggplot() +
+  geom_line(data = long_data_vis_res, aes(x = age, y = memory, group = id), color = "lightgray", alpha = 0.5) + # Plot individual trajectories
+  geom_point(data = long_data_vis_res, aes(x = age, y = memory), color = "gray", size = 1) + # Add scatter points
+  geom_ribbon(data = predictions, aes(x = age, ymin = lower_bound, ymax = upper_bound, fill = as.factor(reverse_bm_group)), alpha = 0.3) + # Add CIs
+  geom_line(data = predictions, aes(x = age, y = predicted, color = as.factor(reverse_bm_group)), size = 1.2) + # Plot predicted lines for each group
+  scale_color_manual(values = palette) +
+  scale_fill_manual(values = palette) + # Ensure fill colors match line colors
+  labs(x = "Age", y = "Memory", color = "Group", fill = "Group") +
+  theme_minimal() +
+  theme(legend.position = "bottom")
+
+# Combine the plots into one figure
+combined_plot <-  bm_age_plot + cr_age_plot + plot_layout(ncol = 2)
+```
+__Figure 5:__ _The Relationship Between Memory and Age Depicted by CR or BM Group_
+
+```{r fig4, echo=FALSE, dpi = 400, fig.width=6, fig.height=4, message=FALSE, warning=FALSE}
+combined_plot
 ```
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
-high_resilience <- long_data_vis %>%
-  filter(resilience == "High Resilience")
+high_cr <- long_data_vis %>%
+  filter(reverse_cr_group == "High CR")
 
-low_resilience <- long_data_vis %>%
-  filter(resilience == "Low Resilience")
+low_cr <- long_data_vis %>%
+  filter(reverse_cr_group == "Low CR")
+
+high_bm <- long_data_vis %>%
+  filter(reverse_bm_group == "High BM")
+
+low_bm <- long_data_vis %>%
+  filter(reverse_bm_group == "Low BM")
 
 vars <- c("scale(age)")
 
 vars_unscale <- c("age")
 
 suppressMessages({
-  high_res_age <- get_mixed_effects_stats(scale(memory) ~ scale(age) + (1 | id), data = high_resilience, vars)
-  high_res_age_unscaled <- get_mixed_effects_stats((memory) ~ age + (1 | id), data = high_resilience, vars_unscale)
+  high_cr_age <- get_mixed_effects_stats(scale(memory) ~ scale(age) + (1 | id), data = high_cr, vars)
+  high_cr_age_unscaled <- get_mixed_effects_stats((memory) ~ age + (1 | id), data = high_cr, vars_unscale)
 
-  low_res_age <- get_mixed_effects_stats(scale(memory) ~ scale(age) + (1 | id), data = low_resilience, vars)
-  low_res_age_unscaled <- get_mixed_effects_stats((memory) ~ (age) + (1 | id), data = low_resilience, vars_unscale)
+  low_cr_age <- get_mixed_effects_stats(scale(memory) ~ scale(age) + (1 | id), data = low_cr, vars)
+  low_cr_age_unscaled <- get_mixed_effects_stats((memory) ~ (age) + (1 | id), data = low_cr, vars_unscale)
+  
+  high_bm_age <- get_mixed_effects_stats(scale(memory) ~ scale(age) + (1 | id), data = high_bm, vars)
+  high_bm_age_unscaled <- get_mixed_effects_stats((memory) ~ age + (1 | id), data = high_bm, vars_unscale)
+
+  low_bm_age <- get_mixed_effects_stats(scale(memory) ~ scale(age) + (1 | id), data = low_bm, vars)
+  low_bm_age_unscaled <- get_mixed_effects_stats((memory) ~ (age) + (1 | id), data = low_bm, vars_unscale)
 })
 ```
-<small>(A) The association between memory and age depicted divided into two groups: high resilience (blue) and low resilience (orange). There are linear mixed effects models for each group with the high resilience group displaying a coefficient of `r round(high_res_age_unscaled$coef, 3)` (scaled: `r round(high_res_age$coef, 3)`) and the low resilience group displaying a coefficient of `r round(low_res_age_unscaled$coef, 3)` (scaled: `r round(low_res_age$coef, 3)`) and confidence intervals.</small>
+<small>(A) The association between memory and age depicted divided into two groups: high BM (blue) and low BM (green). There are linear mixed effects models for each group with the high BM group displaying a coefficient of `r round(high_bm_age_unscaled$coef, 3)` (scaled: `r round(high_bm_age$coef, 3)`) and the low BM group displaying a coefficient of `r round(low_bm_age_unscaled$coef, 3)` (scaled: `r round(low_bm_age$coef, 3)`) and confidence intervals. (B) The association between memory and age depicted divided into high CR (purple) and low CR (orange) with the high CR group displaying a coefficient of `r round(high_cr_age_unscaled$coef, 3)` (scaled: `r round(high_cr_age$coef, 3)`) and the low CR group displaying a coefficient of `r round(low_cr_age_unscaled$coef, 3)` (scaled: `r round(low_cr_age$coef, 3)`) and confidence intervals.</small>
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 # Education and CR / BM
@@ -795,21 +869,6 @@ edu_table_data <- data.frame(
     "", "",
     "**Memory Annual Change**"
   ),
-  "**Cognitive Reserve**" = c(
-    "_Coefficient (95% CI)_",
-    paste0(round(edu_cr$coef, 3), " (", round(edu_cr$ci[1], 3), " to ", round(edu_cr$ci[2], 3), ")"),
-    "**Cognitive Reserve * Education**", "_Coefficient (95% CI)_",
-    paste0(round(edu_cr_int$coef, 3), " (", round(edu_cr_int$ci[1], 3), " to ", round(edu_cr_int$ci[2], 3), ")")
-  ),
-  " " = c(
-    "_Adjusted p-value_",
-    format_p_value(p_value_df[p_value_df$model_name == "edu_cr", "adjusted_p_value"]),
-    "", "_Adjusted p-value_", format_p_value(p_value_df[p_value_df$model_name == "edu_cr_int", "adjusted_p_value"])
-  ),
-  " " = c(
-    "_Adjusted R²_", round(edu_cr$adj_r2, 3),
-    "", "_Adjusted R²_", round(edu_cr_int$adj_r2, 3)
-  ),
   "**Brain Maintenance**" = c(
     "_Coefficient (95% CI)_",
     paste0(round(edu_bm$coef, 3), " (", round(edu_bm$ci[1], 3), " to ", round(edu_bm$ci[2], 3), ")"),
@@ -824,6 +883,21 @@ edu_table_data <- data.frame(
   " " = c(
     "_Adjusted R²_", round(edu_bm$adj_r2, 3),
     "", "_Adjusted R²_", round(edu_bm_int$adj_r2, 3)
+  ),
+  "**Cognitive Reserve**" = c(
+    "_Coefficient (95% CI)_",
+    paste0(round(edu_cr$coef, 3), " (", round(edu_cr$ci[1], 3), " to ", round(edu_cr$ci[2], 3), ")"),
+    "**Cognitive Reserve * Education**", "_Coefficient (95% CI)_",
+    paste0(round(edu_cr_int$coef, 3), " (", round(edu_cr_int$ci[1], 3), " to ", round(edu_cr_int$ci[2], 3), ")")
+  ),
+  " " = c(
+    "_Adjusted p-value_",
+    format_p_value(p_value_df[p_value_df$model_name == "edu_cr", "adjusted_p_value"]),
+    "", "_Adjusted p-value_", format_p_value(p_value_df[p_value_df$model_name == "edu_cr_int", "adjusted_p_value"])
+  ),
+  " " = c(
+    "_Adjusted R²_", round(edu_cr$adj_r2, 3),
+    "", "_Adjusted R²_", round(edu_cr_int$adj_r2, 3)
   )
 )
 ```
@@ -1519,7 +1593,7 @@ education_models <- list(
 
 # CR and BM Sensitivity Analyses
 cr_bm_models <- list(
-  cr_validation, bm_age_lme, cr_age_lme, resilience_lme
+  cr_validation, bm_age_lme, cr_age_lme
 )
 
 # Functional Connectivity and CR/BM Analyses Longitudinal
@@ -1585,7 +1659,7 @@ adjust_p_values <- function(models, model_names) {
 # Adjust p-values for each group
 memory_hippocampus_p_values <- adjust_p_values(memory_hippocampus_edu_models, c("emhp_merged", "model_baseline", "model_followup", "edu_baseline", "edu_followup", "edu_long"))
 education_p_values <- adjust_p_values(education_models, c("edu_cr", "edu_bm", "edu_cr_int", "edu_bm_int"))
-cr_bm_p_values <- adjust_p_values(cr_bm_models, c("cr_validation", "bm_age_lme", "cr_age_lme", "resilience_lme"))
+cr_bm_p_values <- adjust_p_values(cr_bm_models, c("cr_validation", "bm_age_lme", "cr_age_lme"))
 functional_connectivity_long_p_values <- adjust_p_values(functional_connectivity_long, c("bm_dmn_stats", "bm_dmn", "bm_ecn_stats", "bm_ec", "bm_sn_stats", "bm_sn", "cr_dmn_stats", "cr_dmn", "cr_ecn_stats", "cr_ec", "cr_sn_stats", "cr_sn"))
 functional_connectivity_cs_p_values <- adjust_p_values(functional_connectivity_cs, c("cr_dmn_bl", "cr_dmn_fu", "cr_dmn_stats_bl", "cr_dmn_stats_fu", "cr_ec_bl", "cr_ec_fu", "cr_ecn_stats_bl", "cr_ecn_stats_fu", "cr_sn_bl", "cr_sn_fu", "cr_sn_stats_bl", "cr_sn_stats_fu", "bm_dmn_bl", "bm_dmn_fu", "bm_dmn_stats_bl", "bm_dmn_stats_fu", "bm_ec_bl", "bm_ec_fu", "bm_ecn_stats_bl", "bm_ecn_stats_fu", "bm_sn_bl", "bm_sn_fu", "bm_sn_stats_bl", "bm_sn_stats_fu"))
 model_comp_general_p_values <- adjust_p_values(model_comp_general_models, c("gamm_memory_lft", "gamm_memory_gamm", "gamm_hc_lft", "gamm_hc_gamm", "hc_age_lme", "mem_age_lme"))
