@@ -143,11 +143,21 @@ emhc_data <- merge(clean_data, emhc_data, by = c("id"), all = TRUE)
 
 Using the new formula to calculate a BM continuous variable 
 ```{r}
-# First create a scaled version of the HC and memory annual change variables using the residuals
+# First create a scaled and centered version of the HC and memory annual change variables using the residuals
 emhc_data <- emhc_data %>%
   mutate(
-    res_hc_slopes_scaled = res_hc_slopes / abs(min(res_hc_slopes)),
-    res_mem_slopes_scaled = res_mem_slopes / abs(max(res_mem_slopes))
+    hippocampus_slopes_centered = res_hc_slopes - mean(res_hc_slopes, na.rm = TRUE),
+    memory_slopes_centered = res_mem_slopes - mean(res_mem_slopes, na.rm = TRUE),
+    res_hc_slopes_scaled =
+      hippocampus_slopes_centered / max(
+        abs(min(hippocampus_slopes_centered, na.rm = TRUE)),
+        abs(max(hippocampus_slopes_centered, na.rm = TRUE))
+      ),
+    res_mem_slopes_scaled =
+      memory_slopes_centered / max(
+        abs(min(memory_slopes_centered, na.rm = TRUE)),
+        abs(max(memory_slopes_centered, na.rm = TRUE))
+      )
   )
 
 # Define the function to calculate the distance from the data point to the point (1,1)
@@ -221,7 +231,6 @@ emhc_data <- emhc_data %>%
 emhc_data <- emhc_data %>%
   mutate(dist_to_double_cr = dist_to_cr_line + dist_to_cr_point)
 ```
-
 
 Descriptive stats CR
 ```{r}

@@ -187,13 +187,21 @@ data <- data %>%
 
 With your standard variable names and required calculations complete, you can run the rest of this code without needed to make any more modifications. 
 
-This creates a scaled version of the hippocampus and memory annual change variables.
+This creates a centered and scaled version of the hippocampus and memory annual change variables.
 
 ```{r}
 data <- data %>%
   mutate(
-    hippocampus_slopes_scaled = hippocampus_slopes / max(abs(min(hippocampus_slopes, na.rm = TRUE)), abs(max(hippocampus_slopes, na.rm = TRUE))),
-    memory_slopes_scaled = memory_slopes / max(abs(min(memory_slopes, na.rm = TRUE)), abs(max(memory_slopes, na.rm = TRUE)))
+    hippocampus_slopes_centered = hippocampus_slopes - mean(hippocampus_slopes, na.rm = TRUE),
+    memory_slopes_centered = memory_slopes - mean(memory_slopes, na.rm = TRUE),
+    hippocampus_slopes_scaled_centered = hippocampus_slopes_centered / max(
+      abs(min(hippocampus_slopes_centered, na.rm = TRUE)),
+      abs(max(hippocampus_slopes_centered, na.rm = TRUE))
+    ),
+    memory_slopes_scaled_centered = memory_slopes_centered / max(
+      abs(min(memory_slopes_centered, na.rm = TRUE)),
+      abs(max(memory_slopes_centered, na.rm = TRUE))
+    )
   )
 ```
 
@@ -223,8 +231,8 @@ distance_to_bm_line <- function(y, x) {
 # Calculate BM variable
 data <- data %>%
   mutate(
-    dist_to_bm_point = distance_to_bm_point(memory_slopes_scaled, hippocampus_slopes_scaled),
-    dist_to_bm_line = distance_to_bm_line(memory_slopes_scaled, hippocampus_slopes_scaled),
+    dist_to_bm_point = distance_to_bm_point(memory_slopes_scaled_centered, hippocampus_slopes_scaled_centered),
+    dist_to_bm_line = distance_to_bm_line(memory_slopes_scaled_centered, hippocampus_slopes_scaled_centered),
     brain_maintenance = 3.414214 - (dist_to_bm_point + dist_to_bm_line)
   )
 ```
@@ -255,8 +263,8 @@ distance_to_cr_line <- function(y, x) {
 # Calculate CR variable
 data <- data %>%
   mutate(
-    dist_to_cr_point = distance_to_cr_point(memory_slopes_scaled, hippocampus_slopes_scaled),
-    dist_to_cr_line = distance_to_cr_line(memory_slopes_scaled, hippocampus_slopes_scaled),
+    dist_to_cr_point = distance_to_cr_point(memory_slopes_scaled_centered, hippocampus_slopes_scaled_centered),
+    dist_to_cr_line = distance_to_cr_line(memory_slopes_scaled_centered, hippocampus_slopes_scaled_centered),
     cognitive_reserve = 3.414214 - (dist_to_cr_point + dist_to_cr_line)
   )
 ```
@@ -272,3 +280,5 @@ data <- data %>%
     resilience = abs(brain_maintenance) + abs(cognitive_reserve)
   )
 ```
+
+

@@ -456,7 +456,7 @@ We established CR (mean = `r round(mean_cr, 3)`, SD = `r round(sd_cr, 3)`) and B
 
 ```{r echo=FALSE, warning=FALSE}
 custom_colors_bm <- c("#E5E483", "#8ac926", "#4CCD99", "#5BBCFF", "#024CAA", "#00224D")
-custom_colors_cr <- c("#f5d7b0", "#f5be27", "#fa8d00", "#bc507f", "#7E1891", "#1c0159") 
+custom_colors_cr <- c("#f5d7b0", "#f5be27", "#fa8d00", "#bc507f", "#7E1891", "#1c0159")
 
 cr_plot <- ggplot(clean_data, aes(y = res_mem_slopes, x = res_hc_slopes, color = (reverse_cr))) +
   geom_point(size = 2) +
@@ -625,7 +625,7 @@ get_mixed_effects_stats <- function(formula, data, vars_priority) {
   return(list(coef = coef, ci = ci, p_value = p_value, r2 = r2))
 }
 
-# Do the same for CR 
+# Do the same for CR
 clean_data$reverse_cr_group <- cut(clean_data$reverse_cr,
   breaks = quantile(clean_data$reverse_cr, probs = seq(0, 1, (1 / 2)), na.rm = TRUE),
   include.lowest = TRUE,
@@ -797,7 +797,7 @@ bm_age_plot <- ggplot() +
   theme(legend.position = "bottom")
 
 # Combine the plots into one figure
-combined_plot <-  bm_age_plot + cr_age_plot + plot_layout(ncol = 2)
+combined_plot <- bm_age_plot + cr_age_plot + plot_layout(ncol = 2)
 ```
 __Figure 5:__ _The Relationship Between Memory and Age Depicted by CR or BM Group_
 
@@ -828,7 +828,7 @@ suppressMessages({
 
   low_cr_age <- get_mixed_effects_stats(scale(memory) ~ scale(age) + (1 | id), data = low_cr, vars)
   low_cr_age_unscaled <- get_mixed_effects_stats((memory) ~ (age) + (1 | id), data = low_cr, vars_unscale)
-  
+
   high_bm_age <- get_mixed_effects_stats(scale(memory) ~ scale(age) + (1 | id), data = high_bm, vars)
   high_bm_age_unscaled <- get_mixed_effects_stats((memory) ~ age + (1 | id), data = high_bm, vars_unscale)
 

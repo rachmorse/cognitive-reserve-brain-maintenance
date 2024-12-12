@@ -1,6 +1,8 @@
 # Ignore
 Fisher z-transformation.R
 Format scripts.R
+fig 1 code.R
+Fig 1.jpeg
 
 .DS_Store
 .venv/
