@@ -1,9 +1,9 @@
 ---
 title: "Results"
 output:
-  word_document: default
   html_document:
     df_print: paged
+  word_document: default
 ---
 
 ```{r setup, include=FALSE}
@@ -448,6 +448,7 @@ cr_var <- c(
 
 # Running the regression model
 cr_validation <- get_regression_stats(scale(memory_slopes) ~ scale(hc_slopes) + scale(reverse_cr) + study + scale(age_baseline) + scale(mem_time) + sex + scale(edu), data = clean_data, cr_var)
+
 ```
 
 __**CR and BM Variables and Index:**__
@@ -458,14 +459,14 @@ We established CR (mean = `r round(mean_cr, 3)`, SD = `r round(sd_cr, 3)`) and B
 custom_colors_bm <- c("#E5E483", "#8ac926", "#4CCD99", "#5BBCFF", "#024CAA", "#00224D")
 custom_colors_cr <- c("#f5d7b0", "#f5be27", "#fa8d00", "#bc507f", "#7E1891", "#1c0159")
 
-cr_plot <- ggplot(clean_data, aes(y = res_mem_slopes, x = res_hc_slopes, color = (reverse_cr))) +
+cr_plot <- ggplot(clean_data, aes(y = res_mem_slopes_scaled, x = res_hc_slopes_scaled, color = (reverse_cr))) +
   geom_point(size = 2) +
   scale_color_gradientn(
     colors = custom_colors_cr,
     limits = c(0.55, 2.59),
     values = c(0, 1 / 3, 2 / 3, 1) # Values mapped to scale so both figures have the same scale
   ) +
-  geom_abline(slope = -(abs(max(clean_data$res_mem_slopes))) / (abs(min(clean_data$res_hc_slopes))), intercept = 0, color = "grey", size = 1) +
+  geom_abline(slope = -(abs(max(clean_data$res_mem_slopes_scaled))) / (abs(min(clean_data$res_hc_slopes_scaled))), intercept = 0, color = "grey", size = 1) +
   geom_abline(slope = 0, intercept = 0, color = "grey", size = 1) +
   geom_abline(slope = 10000, intercept = 0, color = "grey", size = 1) +
   labs(
@@ -474,9 +475,11 @@ cr_plot <- ggplot(clean_data, aes(y = res_mem_slopes, x = res_hc_slopes, color =
     color = "Cognitive Reserve"
   ) +
   theme_minimal() +
-  theme(legend.position = "bottom")
+  theme(legend.position = "bottom") +
+  xlim(-1, 1) +
+  ylim(-1, 1)
 
-bm_plot <- ggplot(clean_data, aes(y = res_mem_slopes, x = res_hc_slopes, color = reverse_bm)) +
+bm_plot <- ggplot(clean_data, aes(y = res_mem_slopes_scaled, x = res_hc_slopes_scaled, color = reverse_bm)) +
   geom_point(size = 2) +
   scale_color_gradientn(
     colors = custom_colors_bm,
@@ -484,7 +487,7 @@ bm_plot <- ggplot(clean_data, aes(y = res_mem_slopes, x = res_hc_slopes, color =
     values = c(0, 1 / 3, 2 / 3, 1) # Values mapped to scale so both figures have the same scale
   ) +
   geom_abline(
-    slope = (abs(max(clean_data$res_mem_slopes)) / abs(min(clean_data$res_hc_slopes))),
+    slope = (abs(max(clean_data$res_mem_slopes_scaled)) / abs(min(clean_data$res_hc_slopes_scaled))),
     intercept = 0,
     color = "grey",
     size = 1
@@ -497,7 +500,9 @@ bm_plot <- ggplot(clean_data, aes(y = res_mem_slopes, x = res_hc_slopes, color =
     color = "Brain Maintenance"
   ) +
   theme_minimal() +
-  theme(legend.position = "bottom")
+  theme(legend.position = "bottom") +
+  xlim(-1, 1) +
+  ylim(-1, 1)
 
 # Combine the plots into one figure
 combined_crbm <- bm_plot + cr_plot + plot_layout(ncol = 2)
@@ -558,9 +563,9 @@ index_plot <- ggplot(clean_data, aes(x = total_cr_or_bm, y = 0, fill = closer_to
   scale_fill_manual(values = c("BM" = "#91c4e3", "CR" = "#FFAAAA")) +
   scale_color_manual(values = c("BM" = "#000000", "CR" = "#000000")) +
   scale_x_continuous(
-    name = "Index Value",
+    name = NULL,
     breaks = breaks_values,
-    labels = scales::label_number(accuracy = 0.1),
+    labels = abs(breaks_values),
     expand = c(0, 0),
     limits = c(-2.7, 2.7)
   ) +
@@ -577,7 +582,7 @@ index_plot <- ggplot(clean_data, aes(x = total_cr_or_bm, y = 0, fill = closer_to
   theme(
     legend.position = "none",
     plot.background = element_rect(fill = "white", color = "white"),
-    plot.margin = margin(t = 0.35, r = 0.35, b = 0.35, l = 0, unit = "cm"),
+    plot.margin = margin(t = 0.5, r = 0.5, b = 0.5, l = 0.5, unit = "cm"),
     plot.title = element_text(hjust = 0.5)
   )
 ```
@@ -589,6 +594,62 @@ index_plot
 ```
 
 An index depicting participants as either on the BM or CR pathway. The x-axis represents the index value – the ratio of CR to BM for participants with more CR and the ratio of BM to CR for participants with more BM. The y-axis represents the total CR for those on the CR path or the total BM for those of the BM path.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+# Prep the data for visualization
+
+# Divide the data into those on the CR pathway or BM pathway 
+cr_data <- clean_data %>% 
+  filter(closer_to == "CR")
+
+# Create groups of high and low
+cr_data$reverse_cr_group <- cut(cr_data$reverse_cr,
+  breaks = quantile(cr_data$reverse_cr, probs = seq(0, 1, (1 / 2)), na.rm = TRUE),
+  include.lowest = TRUE,
+  labels = c("Low CR", "High CR")
+)
+
+# And for BM
+bm_data <- clean_data %>% 
+  filter(closer_to == "BM")
+
+bm_data$reverse_bm_group <- cut(bm_data$reverse_bm,
+  breaks = quantile(bm_data$reverse_bm, probs = seq(0, 1, (1 / 2)), na.rm = TRUE),
+  include.lowest = TRUE,
+  labels = c("Low BM", "High BM")
+)
+
+# Convert df to long
+long_data_vis_cr <- cr_data%>%
+  pivot_longer(
+    cols = matches("^memory\\.\\d$|^age\\.\\d$|^adj_HIP_total\\.\\d$"),
+    names_to = c(".value", "timepoint"),
+    names_pattern = "(.*)(\\d$)"
+  )
+
+long_data_vis_bm <- bm_data%>%
+  pivot_longer(
+    cols = matches("^memory\\.\\d$|^age\\.\\d$|^adj_HIP_total\\.\\d$"),
+    names_to = c(".value", "timepoint"),
+    names_pattern = "(.*)(\\d$)"
+  )
+
+long_data_vis_cr <- long_data_vis_cr %>%
+  rename(
+    age = "age.",
+    adj_HIP_total = "adj_HIP_total.",
+    memory = "memory."
+  ) %>% 
+  filter(!is.na(age) & !is.na(memory)) 
+
+long_data_vis_bm <- long_data_vis_bm %>%
+  rename(
+    age = "age.",
+    adj_HIP_total = "adj_HIP_total.",
+    memory = "memory."
+  ) %>% 
+  filter(!is.na(age) & !is.na(memory)) 
+```
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 # Add a function for getting the stats from LME models
@@ -625,35 +686,6 @@ get_mixed_effects_stats <- function(formula, data, vars_priority) {
   return(list(coef = coef, ci = ci, p_value = p_value, r2 = r2))
 }
 
-# Do the same for CR
-clean_data$reverse_cr_group <- cut(clean_data$reverse_cr,
-  breaks = quantile(clean_data$reverse_cr, probs = seq(0, 1, (1 / 2)), na.rm = TRUE),
-  include.lowest = TRUE,
-  labels = c("Low CR", "High CR")
-)
-
-# And for BM
-clean_data$reverse_bm_group <- cut(clean_data$reverse_bm,
-  breaks = quantile(clean_data$reverse_bm, probs = seq(0, 1, (1 / 2)), na.rm = TRUE),
-  include.lowest = TRUE,
-  labels = c("Low BM", "High BM")
-)
-
-# Convert df to long
-long_data_vis <- clean_data %>%
-  pivot_longer(
-    cols = matches("^memory\\.\\d$|^age\\.\\d$|^adj_HIP_total\\.\\d$"),
-    names_to = c(".value", "timepoint"),
-    names_pattern = "(.*)(\\d$)"
-  )
-
-long_data_vis <- long_data_vis %>%
-  rename(
-    age = "age.",
-    adj_HIP_total = "adj_HIP_total.",
-    memory = "memory."
-  )
-
 # Set a list of priority variables
 vars <- c(
   "scale(age):scale(reverse_cr)",
@@ -663,14 +695,14 @@ vars <- c(
 cr_age_lme <- get_mixed_effects_stats(
   scale(memory) ~ scale(age) * scale(reverse_cr) + study + scale(age_baseline) +
     scale(mem_time) + sex + scale(edu) + (1 | id),
-  long_data_vis,
+  long_data_vis_cr,
   vars
 )
 
 bm_age_lme <- get_mixed_effects_stats(
   scale(memory) ~ scale(age) * scale(reverse_bm) + study + scale(age_baseline) +
     scale(mem_time) + sex + scale(edu) + (1 | id),
-  long_data_vis,
+  long_data_vis_bm,
   vars
 )
 ```
@@ -678,6 +710,7 @@ bm_age_lme <- get_mixed_effects_stats(
 We then found a significant interaction between CR and age (β = `r round(cr_age_lme$coef, 3)`, _p_ = `r format_p_value(cr_age_lme$p_value)`, _p_<sub>FDR</sub> = `r format_p_value(p_value_df[p_value_df$model_name == "cr_age_lme", "adjusted_p_value"])`, r² = `r round(cr_age_lme$r2, 3)`) and BM and age (β = `r round(bm_age_lme$coef, 3)`, _p_ = `r format_p_value(bm_age_lme$p_value)`, _p_<sub>FDR</sub> = `r format_p_value(p_value_df[p_value_df$model_name == "bm_age_lme", "adjusted_p_value"])`, r² = `r round(bm_age_lme$r2, 3)`) on memory (Table 5). 
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
+
 # Create the table
 table_cr_bm_age <- data.frame(
   " " = c(
@@ -714,20 +747,16 @@ kable(table_cr_bm_age, format = "markdown", col.names = c(" ", "**Brain Maintena
 Note. Models are adjusted for age, sex, education, follow-up time, and cohort/MRI scanner. _p_-values are adjusted for multiple comparisons using the FDR. Abbreviations: CI Confidence Interval
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
-# Remove instances of NA
-long_data_vis_res <- long_data_vis %>%
-  filter(!is.na(age) & !is.na(memory))
-
 # Fit the mixed-effects model
-model_res_lme <- lmer(memory ~ age * reverse_cr_group + (1 | id), data = long_data_vis)
+model_res_lme <- lmer(memory ~ age * reverse_cr_group + (1 | id), data = long_data_vis_cr)
 
 # Define a range of ages for prediction
-age_seq <- seq(min(long_data_vis_res$age), max(long_data_vis_res$age), length.out = 100)
+age_seq <- seq(min(long_data_vis_cr$age), max(long_data_vis_cr$age), length.out = 100)
 
 # Generate predictions for each CR group
 # Divides the low and high CR groups into 100 age bands and,
 # using the LME model from above, predicts their memory for each of the age bands
-predictions <- do.call(rbind, lapply(unique(long_data_vis_res$reverse_cr_group), function(res) {
+predictions <- do.call(rbind, lapply(unique(long_data_vis_cr$reverse_cr_group), function(res) {
   new_data <- data.frame(
     age = age_seq,
     reverse_cr_group = res,
@@ -747,26 +776,26 @@ palette <- c("High CR" = "#7E1891", "Low CR" = "#f5be27")
 
 # Create the plot
 cr_age_plot <- ggplot() +
-  geom_line(data = long_data_vis_res, aes(x = age, y = memory, group = id), color = "lightgray", alpha = 0.5) + # Plot individual trajectories
-  geom_point(data = long_data_vis_res, aes(x = age, y = memory), color = "gray", size = 1) + # Add scatter points
+  geom_line(data = long_data_vis_cr, aes(x = age, y = memory, group = id), color = "lightgray", alpha = 0.5) + # Plot individual trajectories
+  geom_point(data = long_data_vis_cr, aes(x = age, y = memory), color = "gray", size = 1) + # Add scatter points
   geom_ribbon(data = predictions, aes(x = age, ymin = lower_bound, ymax = upper_bound, fill = as.factor(reverse_cr_group)), alpha = 0.3) + # Add CIs
   geom_line(data = predictions, aes(x = age, y = predicted, color = as.factor(reverse_cr_group)), size = 1.2) + # Plot predicted lines for each group
   scale_color_manual(values = palette) +
   scale_fill_manual(values = palette) + # Ensure fill colors match line colors
-  labs(x = "Age", y = "Memory", color = "Group", fill = "Group") +
+  labs(x = "Age", y = "Memory", color = "Group", fill = "Group", title = "CR Pathway") +
   theme_minimal() +
   theme(legend.position = "bottom")
 ```
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 # Fit the mixed-effects model
-model_res_lme <- lmer(memory ~ age * reverse_bm_group + (1 | id), data = long_data_vis)
+model_res_lme <- lmer(memory ~ age * reverse_bm_group + (1 | id), data = long_data_vis_bm)
 
 # Define a range of ages for prediction
-age_seq <- seq(min(long_data_vis_res$age), max(long_data_vis_res$age), length.out = 100)
+age_seq <- seq(min(long_data_vis_bm$age), max(long_data_vis_bm$age), length.out = 100)
 
 # Generate predictions for each BM group
-predictions <- do.call(rbind, lapply(unique(long_data_vis_res$reverse_bm_group), function(res) {
+predictions <- do.call(rbind, lapply(unique(long_data_vis_bm$reverse_bm_group), function(res) {
   new_data <- data.frame(
     age = age_seq,
     reverse_bm_group = res,
@@ -786,13 +815,13 @@ palette <- c("High BM" = "#1f77b4", "Low BM" = "#8ac926")
 
 # Create the plot
 bm_age_plot <- ggplot() +
-  geom_line(data = long_data_vis_res, aes(x = age, y = memory, group = id), color = "lightgray", alpha = 0.5) + # Plot individual trajectories
-  geom_point(data = long_data_vis_res, aes(x = age, y = memory), color = "gray", size = 1) + # Add scatter points
+  geom_line(data = long_data_vis_bm, aes(x = age, y = memory, group = id), color = "lightgray", alpha = 0.5) + # Plot individual trajectories
+  geom_point(data = long_data_vis_bm, aes(x = age, y = memory), color = "gray", size = 1) + # Add scatter points
   geom_ribbon(data = predictions, aes(x = age, ymin = lower_bound, ymax = upper_bound, fill = as.factor(reverse_bm_group)), alpha = 0.3) + # Add CIs
   geom_line(data = predictions, aes(x = age, y = predicted, color = as.factor(reverse_bm_group)), size = 1.2) + # Plot predicted lines for each group
   scale_color_manual(values = palette) +
   scale_fill_manual(values = palette) + # Ensure fill colors match line colors
-  labs(x = "Age", y = "Memory", color = "Group", fill = "Group") +
+  labs(x = "Age", y = "Memory", color = "Group", fill = "Group", title = "BM Pathway") +
   theme_minimal() +
   theme(legend.position = "bottom")
 
@@ -806,16 +835,16 @@ combined_plot
 ```
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
-high_cr <- long_data_vis %>%
+high_cr <- long_data_vis_cr %>%
   filter(reverse_cr_group == "High CR")
 
-low_cr <- long_data_vis %>%
+low_cr <- long_data_vis_cr %>%
   filter(reverse_cr_group == "Low CR")
 
-high_bm <- long_data_vis %>%
+high_bm <- long_data_vis_bm %>%
   filter(reverse_bm_group == "High BM")
 
-low_bm <- long_data_vis %>%
+low_bm <- long_data_vis_bm %>%
   filter(reverse_bm_group == "Low BM")
 
 vars <- c("scale(age)")
@@ -1678,3 +1707,99 @@ p_value_df <- rbind(
 write.csv(p_value_df, file = "/tsd/p274/data/durable/projects/p027-cr_bm/p_value.csv")
 ```
 
+
+
+```{r}
+library(ggnewscale)
+
+clean_data <- clean_data %>%
+  mutate(
+    dist = ifelse(dist_to_bm_line < dist_to_cr_line, "BM", "CR"),
+    dist_cr_or_bm = ifelse(dist_to_bm_line < dist_to_cr_line, reverse_bm, -reverse_cr)
+  )
+
+bm_data <- clean_data %>% 
+  filter(dist == "BM")
+
+cr_data <- clean_data %>% 
+  filter(dist == "CR")
+
+test <- ggplot() +
+  # Plot the first dataset
+  geom_point(data = bm_data, aes(x = res_hc_slopes_scaled, y = res_mem_slopes_scaled, color = reverse_bm), size = 2) +
+  scale_color_gradientn(
+    colors = custom_colors_bm,
+    limits = c(0.55, 2.59),
+    values = c(0, 1/3, 2/3, 1),
+    na.value = NA,
+    name = "Brain Maintenance"
+  ) +
+  geom_smooth(data = bm_data, aes(x = res_hc_slopes_scaled, y = res_mem_slopes_scaled), method = "lm", color = "grey", fill = "grey") +
+  
+  # Add new color scale
+  new_scale_color() +
+  
+  # Plot the second dataset
+  geom_point(data = cr_data, aes(x = res_hc_slopes_scaled, y = res_mem_slopes_scaled, color = reverse_cr), size = 2) +
+  scale_color_gradientn(
+    colors = custom_colors_cr,
+    limits = c(0.55, 2.59),
+    values = c(0, 1/3, 2/3, 1),
+    na.value = NA,
+    name = "Cognitive Reserve"
+  ) +
+  geom_smooth(data = cr_data, aes(x = res_hc_slopes_scaled, y = res_mem_slopes_scaled), method = "lm", color = "grey", fill = "grey") +
+  labs(
+    y = "Memory Annual Change",
+    x = "Hippocampus Annual Change"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "right") +
+  xlim(-1, 1) +
+  ylim(-1, 1)
+
+bm_data <- clean_data %>% 
+  filter(closer_to == "BM")
+
+cr_data <- clean_data %>% 
+  filter(closer_to == "CR")
+
+test2 <- ggplot() +
+  # Plot the first dataset
+  geom_point(data = bm_data, aes(x = res_hc_slopes_scaled, y = res_mem_slopes_scaled, color = reverse_bm), size = 2) +
+  scale_color_gradientn(
+    colors = custom_colors_bm,
+    limits = c(0.55, 2.59),
+    values = c(0, 1/3, 2/3, 1),
+    na.value = NA,
+    name = "Brain Maintenance"
+  ) +
+  geom_smooth(data = bm_data, aes(x = res_hc_slopes_scaled, y = res_mem_slopes_scaled), method = "lm", color = "grey", fill = "grey") +
+  
+  # Add new color scale
+  new_scale_color() +
+  
+  # Plot the second dataset
+  geom_point(data = cr_data, aes(x = res_hc_slopes_scaled, y = res_mem_slopes_scaled, color = reverse_cr), size = 2) +
+  scale_color_gradientn(
+    colors = custom_colors_cr,
+    limits = c(0.55, 2.59),
+    values = c(0, 1/3, 2/3, 1),
+    na.value = NA,
+    name = "Cognitive Reserve"
+  ) +
+  geom_smooth(data = cr_data, aes(x = res_hc_slopes_scaled, y = res_mem_slopes_scaled), method = "lm", color = "grey", fill = "grey") +
+  labs(
+    y = "Memory Annual Change",
+    x = "Hippocampus Annual Change"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "right") +
+  xlim(-1, 1) +
+  ylim(-1, 1)
+```
+
+```{r figx, echo=FALSE, dpi = 400, fig.width=6, fig.height=4, message=FALSE, warning=FALSE}
+test
+test2
+```
