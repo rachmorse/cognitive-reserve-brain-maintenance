@@ -67,6 +67,10 @@ if (!require("gamm4")) {
   install.packages("gamm4")
   require("gamm4")
 }
+if (!require("ggbeeswarm")) {
+  install.packages("ggbeeswarm")
+  require("ggbeeswarm")
+}
 ```
 
 ```{r echo=FALSE, warning=FALSE}
@@ -80,7 +84,7 @@ p_value_df$adjusted_p_value <- as.numeric(format(p_value_df$adjusted_p_value, sc
 
 ```{r echo=FALSE}
 participants <- clean_data %>% nrow()
-female <- (clean_data %>% filter(sex == "female") %>% nrow())
+female <- (clean_data %>% filter(clean_data$sex == "female") %>% nrow())
 female_percentage <- (female / participants) * 100
 mean_age <- mean(clean_data$age_baseline, na.rm = TRUE)
 sd_age <- sd(clean_data$age_baseline, na.rm = TRUE)
@@ -414,22 +418,21 @@ kable(table_data_emhc, format = "markdown", col.names = c(" ", "**Hippocampus An
 Note. Models are adjusted for age, sex, education, follow-up time, and cohort/MRI scanner. _p_-values are adjusted for multiple comparisons using the FDR. Abbreviations: CI Confidence Interval
 
 ```{r echo=FALSE}
-# Calculate mean and SD for CR and BM variables
-mean_cr <- mean(clean_data$reverse_cr, na.rm = TRUE)
-sd_cr <- sd(clean_data$reverse_cr, na.rm = TRUE)
-mean_bm <- mean(clean_data$reverse_bm, na.rm = TRUE)
-sd_bm <- sd(clean_data$reverse_bm, na.rm = TRUE)
-
 # Calculate the combined CR and BM value
 clean_data <- clean_data %>%
   mutate(
     total_cr_or_bm = ifelse(reverse_bm > reverse_cr, reverse_bm, -reverse_cr),
-    closer_to = ifelse(reverse_bm > reverse_cr, "BM", "CR"),
-    distance_from_midline = ifelse(closer_to == "BM", (reverse_bm / reverse_cr), (-(reverse_cr / reverse_bm)))
+    closer_to = ifelse(dist_to_cr_line > dist_to_bm_line, "BM", "CR")
   )
 
-mean_distance_midline <- mean(clean_data$distance_from_midline, na.rm = TRUE)
-sd_distance_midline <- sd(clean_data$distance_from_midline, na.rm = TRUE)
+# Calculate mean and SD for CR and BM variables
+mean_bm <- mean(clean_data$reverse_bm, na.rm = TRUE)
+min_bm <- min(clean_data$reverse_bm, na.rm = TRUE)
+max_bm <- max(clean_data$reverse_bm, na.rm = TRUE)
+
+mean_cr <- mean(clean_data$reverse_cr, na.rm = TRUE)
+min_cr <- min(clean_data$reverse_cr, na.rm = TRUE)
+max_cr <- max(clean_data$reverse_cr, na.rm = TRUE)
 
 # Classify participants into CR and BM pathways based on some criteria
 # (Replace with actual classification logic if different)
@@ -448,12 +451,11 @@ cr_var <- c(
 
 # Running the regression model
 cr_validation <- get_regression_stats(scale(memory_slopes) ~ scale(hc_slopes) + scale(reverse_cr) + study + scale(age_baseline) + scale(mem_time) + sex + scale(edu), data = clean_data, cr_var)
-
 ```
 
 __**CR and BM Variables and Index:**__
 
-We established CR (mean = `r round(mean_cr, 3)`, SD = `r round(sd_cr, 3)`) and BM (mean = `r round(mean_bm, 3)`, SD = `r round(sd_bm, 3)`) variables (Figure 3). In a model with hippocampal annual change included, we found that CR remained a  significant predictor of memory annual change (β = `r round(cr_validation$coef, 3)`, _p_ = `r format_p_value(cr_validation$p_value)`, _p_<sub>FDR</sub> = `r format_p_value(p_value_df[p_value_df$model_name == "cr_validation", "adjusted_p_value"])`, r² = `r round(emhp_merged$r2, 3)`).
+We established CR and BM variables (Figure 3). In a model with hippocampal annual change included, we found that CR remained a  significant predictor of memory annual change (β = `r round(cr_validation$coef, 3)`, _p_ = `r format_p_value(cr_validation$p_value)`, _p_<sub>FDR</sub> = `r format_p_value(p_value_df[p_value_df$model_name == "cr_validation", "adjusted_p_value"])`, r² = `r round(emhp_merged$r2, 3)`).
 
 ```{r echo=FALSE, warning=FALSE}
 custom_colors_bm <- c("#E5E483", "#8ac926", "#4CCD99", "#5BBCFF", "#024CAA", "#00224D")
@@ -513,93 +515,102 @@ __Figure 3:__ _Brain Maintenance and Cognitive Reserve Plots_
 ```{r fig2, echo=FALSE, dpi = 400, fig.width=7, fig.height=4, message=FALSE, warning=FALSE}
 combined_crbm
 ```
-
 <small>(A) The association between hippocampus annual change and memory annual change, adjusted for cohort/MRI scanner, depicted with a diagonal line representing the BM line. The color code represents the level of BM for a given participant. (B) The same association between hippocampus annual change and memory annual change, adjusted for cohort/MRI scanner, this time depicted with a diagonal line representing the CR line. The color code represents the level of CR for a given participant.</small>
 
-We then created the CR and BM index with participants classified as on the CR pathway (N = `r cr_pathway`/`r total_participants`) or the BM pathway (N = `r bm_pathway`/`r total_participants`) (Figure 4). The mean absolute index value was `r round(mean_distance_midline, 3)` (SD = `r round(sd_distance_midline, 3)`).
+We then created the CR and BM index with participants classified as on the CR pathway (N = `r cr_pathway`/`r total_participants`) or the BM pathway (N = `r bm_pathway`/`r total_participants`) (Figure 4). The mean BM value for participants on the BM pathway was `r round(mean_bm, 3)` (range = `r round(min_bm, 3)` - `r round(max_bm, 3)`), and the mean CR value for participants on the CR pathway was `r round(mean_cr, 3)` (range = `r round(min_cr, 3)` - `r round(max_cr, 3)`).
 
 ```{r echo=FALSE, warning=FALSE}
-# Create breaks for the graph looks nice
-breaks_values <- c(seq(-5, 5, by = 1), 0)
-breaks_values <- sort(unique(breaks_values))
+clean_data <- clean_data %>%
+  mutate(
+    total_cr_bm_test = ifelse(reverse_bm > reverse_cr, reverse_bm, reverse_cr),
+    pathway = ifelse(reverse_bm > reverse_cr, "BM Pathway", "CR Pathway"),
+  )
 
-# index_plot <- ggplot(clean_data, aes(x = index, y = total_cr_or_bm, fill = closer_to)) +
-#   geom_point(aes(color = closer_to), shape = 21, size = 3, position = position_jitter(width = 0.01)) +
-#   scale_fill_manual(values = c("BM" = "#AD88C6", "CR" = "#A1D6B2")) +
-#   scale_color_manual(values = c("BM" = "#000000", "CR" = "#000000")) +
-#   # facet_zoom(xlim = c(-0.5, 0.5)) + # Add this for the plot to zoom in in a 2nd variation
-#   scale_x_continuous(
-#     name = "Index Value",
-#     breaks = breaks_values,
-#     labels = scales::label_number(accuracy = .1),
-#     expand = c(0, 0),
-#     limits = c(-2.2, 2.2) # Set x-axis limits explicitly
-#   ) +
-#   labs(
-#     title = "Cognitive Reserve / Brain Maintenance Index",
-#     y = "Total CR or BM",
-#     fill = "Pathway",
-#     color = "Pathway"
-#   ) +
-#   theme_minimal() +
-#   theme(
-#     axis.text.y = element_text(),
-#     axis.ticks.y = element_line(),
-#     panel.grid.major.y = element_line(),
-#     panel.grid.minor.y = element_blank(),
-#     legend.position = "bottom",
-#     plot.margin = margin(t = 0.25, r = 0.25, b = 0.25, l = 0.25, unit = "cm"),
-#     axis.text.x = element_text(margin = margin(t = -5)),
-#     plot.title = element_text(hjust = 0.5),
-#   )
+cr_path <- clean_data %>%
+  filter(pathway == "CR Pathway")
 
-index_plot <- ggplot(clean_data, aes(x = total_cr_or_bm, y = 0, fill = closer_to)) +
-  annotate("rect", xmin = 0, xmax = Inf, ymin = -Inf, ymax = Inf, alpha = 0.2, fill = "#d7eaf5") +
-  annotate("rect", xmin = -Inf, xmax = 0, ymin = -Inf, ymax = Inf, alpha = 0.2, fill = "#ffcfcf") +
-  annotate("text", x = -1.5, y = 1.9, label = "CR Pathway", color = "black", size = 4, hjust = 0.5) +
-  annotate("text", x = 1.5, y = 1.9, label = "BM Pathway", color = "black", size = 4, hjust = 0.5) +
-  geom_violin(trim = FALSE, scale = "width", width = 4, position = position_identity()) +
-  geom_jitter(aes(color = closer_to), shape = 21, size = 2.5, width = 0, height = 1) +
-  scale_fill_manual(values = c("BM" = "#91c4e3", "CR" = "#FFAAAA")) +
-  scale_color_manual(values = c("BM" = "#000000", "CR" = "#000000")) +
-  scale_x_continuous(
-    name = NULL,
-    breaks = breaks_values,
-    labels = abs(breaks_values),
-    expand = c(0, 0),
-    limits = c(-2.7, 2.7)
+bm_path <- clean_data %>%
+  filter(pathway == "BM Pathway")
+
+# Plot the CR half
+cr_path_plot <- ggplot(cr_path, aes(pathway, total_cr_bm_test, color = reverse_cr, fill = reverse_cr)) +
+  geom_quasirandom(size = 4) +
+  scale_color_gradientn(
+    colors = c("#f5d7b0", "#f5be27", "#fa8d00", "#bc507f", "#7E1891", "#1c0159"),
+    limits = c(0.55, 2.59),
+    values = c(0, 1 / 3, 2 / 3, 1) # Values mapped to scale so both figures have the same scale
   ) +
-  scale_y_continuous(
-    limits = c(0, 2.1),
-    expand = c(0, 0)
-  ) +
-  labs(
-    fill = NULL,
-    y = "Density",
-    color = NULL
+  scale_fill_gradientn(
+    colors = c("#f5d7b0", "#f5be27", "#fa8d00", "#bc507f", "#7E1891", "#1c0159"), limits = c(0.55, 2.59),
+    values = c(0, 1 / 3, 2 / 3, 1)
   ) +
   theme_minimal() +
   theme(
-    legend.position = "none",
-    plot.background = element_rect(fill = "white", color = "white"),
-    plot.margin = margin(t = 0.5, r = 0.5, b = 0.5, l = 0.5, unit = "cm"),
-    plot.title = element_text(hjust = 0.5)
-  )
+    axis.text.x = element_blank(), # Remove x-axis text
+    legend.position = "top",
+    plot.margin = margin(10, 10, 10, 10)
+  ) +
+  scale_y_continuous(
+    limits = c(0.7, 2.7), # Replace with your desired limits
+    expand = c(0, 0),
+    position = "right" # Move y-axis to the right
+  ) +
+  labs(
+    y = "Amount of Cognitive Reserve",
+    x = "Participants on Cognitive Reserve Path",
+    color = "Cognitive Reserve"
+  ) +
+  guides(color = "none", fill = guide_colorbar(title = "Cognitive Reserve"))
+
+# Plot the BM half
+bm_path_plot <- ggplot(bm_path, aes(pathway, total_cr_bm_test, color = reverse_bm, fill = reverse_bm)) +
+  geom_quasirandom(size = 4) +
+  scale_color_gradientn(
+    colors = c("#E5E483", "#8ac926", "#4CCD99", "#5BBCFF", "#024CAA", "#00224D"),
+    limits = c(0.55, 2.59),
+    values = c(0, 1 / 3, 2 / 3, 1) # Values mapped to scale so both figures have the same scale
+  ) +
+  scale_fill_gradientn(
+    colors = c("#E5E483", "#8ac926", "#4CCD99", "#5BBCFF", "#024CAA", "#00224D"), limits = c(0.55, 2.59),
+    values = c(0, 1 / 3, 2 / 3, 1)
+  ) +
+  theme_minimal() +
+  scale_y_continuous(
+    limits = c(0.7, 2.7),
+    expand = c(0, 0)
+  ) +
+  labs(
+    y = "Amount of Brain Maintenance",
+    x = "Participants on Brain Maintenance Path",
+    color = "Brain Maintenance"
+  ) +
+  theme(
+    axis.text.x = element_blank(), # Remove x-axis text
+    legend.position = "top"
+  ) +
+  guides(color = "none", fill = guide_colorbar(title = "Brain Maintenance"))
+
+# Add margins
+bm_path_plot <- bm_path_plot + theme(plot.margin = unit(c(0, 0, 0, 0), "cm"))
+cr_path_plot <- cr_path_plot + theme(plot.margin = unit(c(0, 0, 0, 0), "cm"))
+
+# Combine the halves
+index_plot <- bm_path_plot + cr_path_plot + plot_layout(ncol = 2, widths = c(1, 1))
 ```
 
 __Figure 4:__ _Index of Brain Maintenance and Cognitive Reserve_
 
-```{r fig3, echo=FALSE, dpi = 400, fig.width=8, fig.height=2, message=FALSE, warning=FALSE}
+```{r fig3, echo=FALSE, dpi = 400, fig.width=8, fig.height=6, message=FALSE, warning=FALSE}
 index_plot
 ```
 
-An index depicting participants as either on the BM or CR pathway. The x-axis represents the index value – the ratio of CR to BM for participants with more CR and the ratio of BM to CR for participants with more BM. The y-axis represents the total CR for those on the CR path or the total BM for those of the BM path.
+An index depicting participants as either on the BM or CR pathway. The y-axis represents the total CR for those on the CR path or the total BM for those of the BM path.
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 # Prep the data for visualization
 
-# Divide the data into those on the CR pathway or BM pathway 
-cr_data <- clean_data %>% 
+# Divide the data into those on the CR pathway or BM pathway
+cr_data <- clean_data %>%
   filter(closer_to == "CR")
 
 # Create groups of high and low
@@ -610,7 +621,7 @@ cr_data$reverse_cr_group <- cut(cr_data$reverse_cr,
 )
 
 # And for BM
-bm_data <- clean_data %>% 
+bm_data <- clean_data %>%
   filter(closer_to == "BM")
 
 bm_data$reverse_bm_group <- cut(bm_data$reverse_bm,
@@ -620,14 +631,14 @@ bm_data$reverse_bm_group <- cut(bm_data$reverse_bm,
 )
 
 # Convert df to long
-long_data_vis_cr <- cr_data%>%
+long_data_vis_cr <- cr_data %>%
   pivot_longer(
     cols = matches("^memory\\.\\d$|^age\\.\\d$|^adj_HIP_total\\.\\d$"),
     names_to = c(".value", "timepoint"),
     names_pattern = "(.*)(\\d$)"
   )
 
-long_data_vis_bm <- bm_data%>%
+long_data_vis_bm <- bm_data %>%
   pivot_longer(
     cols = matches("^memory\\.\\d$|^age\\.\\d$|^adj_HIP_total\\.\\d$"),
     names_to = c(".value", "timepoint"),
@@ -639,16 +650,16 @@ long_data_vis_cr <- long_data_vis_cr %>%
     age = "age.",
     adj_HIP_total = "adj_HIP_total.",
     memory = "memory."
-  ) %>% 
-  filter(!is.na(age) & !is.na(memory)) 
+  ) %>%
+  filter(!is.na(age) & !is.na(memory))
 
 long_data_vis_bm <- long_data_vis_bm %>%
   rename(
     age = "age.",
     adj_HIP_total = "adj_HIP_total.",
     memory = "memory."
-  ) %>% 
-  filter(!is.na(age) & !is.na(memory)) 
+  ) %>%
+  filter(!is.na(age) & !is.na(memory))
 ```
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
@@ -710,7 +721,6 @@ bm_age_lme <- get_mixed_effects_stats(
 We then found a significant interaction between CR and age (β = `r round(cr_age_lme$coef, 3)`, _p_ = `r format_p_value(cr_age_lme$p_value)`, _p_<sub>FDR</sub> = `r format_p_value(p_value_df[p_value_df$model_name == "cr_age_lme", "adjusted_p_value"])`, r² = `r round(cr_age_lme$r2, 3)`) and BM and age (β = `r round(bm_age_lme$coef, 3)`, _p_ = `r format_p_value(bm_age_lme$p_value)`, _p_<sub>FDR</sub> = `r format_p_value(p_value_df[p_value_df$model_name == "bm_age_lme", "adjusted_p_value"])`, r² = `r round(bm_age_lme$r2, 3)`) on memory (Table 5). 
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
-
 # Create the table
 table_cr_bm_age <- data.frame(
   " " = c(
@@ -1718,10 +1728,10 @@ clean_data <- clean_data %>%
     dist_cr_or_bm = ifelse(dist_to_bm_line < dist_to_cr_line, reverse_bm, -reverse_cr)
   )
 
-bm_data <- clean_data %>% 
+bm_data <- clean_data %>%
   filter(dist == "BM")
 
-cr_data <- clean_data %>% 
+cr_data <- clean_data %>%
   filter(dist == "CR")
 
 test <- ggplot() +
@@ -1730,21 +1740,19 @@ test <- ggplot() +
   scale_color_gradientn(
     colors = custom_colors_bm,
     limits = c(0.55, 2.59),
-    values = c(0, 1/3, 2/3, 1),
+    values = c(0, 1 / 3, 2 / 3, 1),
     na.value = NA,
     name = "Brain Maintenance"
   ) +
   geom_smooth(data = bm_data, aes(x = res_hc_slopes_scaled, y = res_mem_slopes_scaled), method = "lm", color = "grey", fill = "grey") +
-  
   # Add new color scale
   new_scale_color() +
-  
   # Plot the second dataset
   geom_point(data = cr_data, aes(x = res_hc_slopes_scaled, y = res_mem_slopes_scaled, color = reverse_cr), size = 2) +
   scale_color_gradientn(
     colors = custom_colors_cr,
     limits = c(0.55, 2.59),
-    values = c(0, 1/3, 2/3, 1),
+    values = c(0, 1 / 3, 2 / 3, 1),
     na.value = NA,
     name = "Cognitive Reserve"
   ) +
@@ -1758,10 +1766,10 @@ test <- ggplot() +
   xlim(-1, 1) +
   ylim(-1, 1)
 
-bm_data <- clean_data %>% 
+bm_data <- clean_data %>%
   filter(closer_to == "BM")
 
-cr_data <- clean_data %>% 
+cr_data <- clean_data %>%
   filter(closer_to == "CR")
 
 test2 <- ggplot() +
@@ -1770,21 +1778,21 @@ test2 <- ggplot() +
   scale_color_gradientn(
     colors = custom_colors_bm,
     limits = c(0.55, 2.59),
-    values = c(0, 1/3, 2/3, 1),
+    values = c(0, 1 / 3, 2 / 3, 1),
     na.value = NA,
     name = "Brain Maintenance"
   ) +
   geom_smooth(data = bm_data, aes(x = res_hc_slopes_scaled, y = res_mem_slopes_scaled), method = "lm", color = "grey", fill = "grey") +
-  
+
   # Add new color scale
   new_scale_color() +
-  
+
   # Plot the second dataset
   geom_point(data = cr_data, aes(x = res_hc_slopes_scaled, y = res_mem_slopes_scaled, color = reverse_cr), size = 2) +
   scale_color_gradientn(
     colors = custom_colors_cr,
     limits = c(0.55, 2.59),
-    values = c(0, 1/3, 2/3, 1),
+    values = c(0, 1 / 3, 2 / 3, 1),
     na.value = NA,
     name = "Cognitive Reserve"
   ) +
@@ -1797,9 +1805,83 @@ test2 <- ggplot() +
   theme(legend.position = "right") +
   xlim(-1, 1) +
   ylim(-1, 1)
+
+test_bm <- lm(memory_slopes ~ hc_slopes + study + reverse_bm, data = bm_data)
+summary(test_bm)
+
+test_bm_mmse <- lm(mmse ~ hc_slopes + study + reverse_bm, data = bm_data)
+summary(test_bm_mmse)
+
+test_cr <- lm(memory_slopes ~ hc_slopes + study + reverse_cr, data = cr_data)
+summary(test_cr)
+
+filt_df_test <- clean_data %>%
+  filter(em_obs > 2)
+View(filt_df_test)
+
+
+left_data <- clean_data %>%
+  filter(closer_to == "CR")
+
+right_data <- clean_data %>%
+  filter(closer_to == "BM")
+
+# Plot for left side
+left_plot <- ggplot(left_data, aes(x = dist_cr_or_bm, y = 0, color = reverse_cr, fill = reverse_cr)) +
+  geom_quasirandom(size = 6) +
+  scale_color_gradientn(colors = c("#f5d7b0", "#f5be27", "#fa8d00", "#bc507f", "#7E1891", "#1c0159")) +
+  scale_fill_gradientn(colors = c("#f5d7b0", "#f5be27", "#fa8d00", "#bc507f", "#7E1891", "#1c0159")) +
+  theme_minimal() +
+  theme(legend.position = "none") +
+  scale_x_continuous(
+    limits = c(-2.7, 0),
+    expand = c(0, 0)
+  ) +
+  scale_y_continuous(
+    limits = c(-0.5, 0.5),
+    expand = c(0, 0)
+  ) +
+  labs(
+    fill = NULL,
+    y = " ",
+    color = NULL
+  )
+
+# Plot for right side
+right_plot <- ggplot(right_data, aes(x = dist_cr_or_bm, y = 0, color = reverse_bm, fill = reverse_bm)) +
+  geom_quasirandom(size = 6) +
+  scale_color_gradientn(colors = c("#E5E483", "#8ac926", "#4CCD99", "#5BBCFF", "#024CAA", "#00224D")) +
+  scale_fill_gradientn(colors = c("#E5E483", "#8ac926", "#4CCD99", "#5BBCFF", "#024CAA", "#00224D")) +
+  theme_minimal() +
+  theme(
+    legend.position = "none",
+    axis.title.y = element_blank(),
+    axis.text.y = element_blank(),
+    axis.ticks.y = element_blank()
+  ) +
+  scale_x_continuous(
+    limits = c(0, 2.7),
+    expand = c(0, 0)
+  ) +
+  scale_y_continuous(
+    limits = c(-0.5, 0.5),
+    expand = c(0, 0)
+  ) +
+  labs(
+    fill = NULL,
+    y = "",
+    color = NULL
+  )
+
+combined_plot <- left_plot + right_plot + plot_layout(ncol = 2, widths = c(1, 1))
+combined_plot
 ```
+
+
 
 ```{r figx, echo=FALSE, dpi = 400, fig.width=6, fig.height=4, message=FALSE, warning=FALSE}
 test
 test2
 ```
+
+
