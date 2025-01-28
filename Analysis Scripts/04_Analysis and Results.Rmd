@@ -421,8 +421,9 @@ Note. Models are adjusted for age, sex, education, follow-up time, and cohort/MR
 # Calculate the combined CR and BM value
 clean_data <- clean_data %>%
   mutate(
+    ################################### REMOVE DEPENDING ON INDEX FIGURE
     total_cr_or_bm = ifelse(reverse_bm > reverse_cr, reverse_bm, -reverse_cr),
-    closer_to = ifelse(dist_to_cr_line > dist_to_bm_line, "BM", "CR")
+    pathway = ifelse(dist_to_cr_line > dist_to_bm_line, "BM Pathway", "CR Pathway"),
   )
 
 # Calculate mean and SD for CR and BM variables
@@ -436,11 +437,13 @@ max_cr <- max(clean_data$reverse_cr, na.rm = TRUE)
 
 # Classify participants into CR and BM pathways based on some criteria
 # (Replace with actual classification logic if different)
+
+# Divide data into pathways
 cr_pathway <- clean_data %>%
-  filter(closer_to == "CR") %>%
+  filter(pathway == "CR Pathway") %>%
   nrow()
 bm_pathway <- clean_data %>%
-  filter(closer_to == "BM") %>%
+  filter(pathway == "BM Pathway") %>%
   nrow()
 total_participants <- nrow(clean_data)
 
@@ -453,7 +456,7 @@ cr_var <- c(
 cr_validation <- get_regression_stats(scale(memory_slopes) ~ scale(hc_slopes) + scale(reverse_cr) + study + scale(age_baseline) + scale(mem_time) + sex + scale(edu), data = clean_data, cr_var)
 ```
 
-__**CR and BM Variables and Index:**__
+__**CR and BM Variables:**__
 
 We established CR and BM variables (Figure 3). In a model with hippocampal annual change included, we found that CR remained a  significant predictor of memory annual change (β = `r round(cr_validation$coef, 3)`, _p_ = `r format_p_value(cr_validation$p_value)`, _p_<sub>FDR</sub> = `r format_p_value(p_value_df[p_value_df$model_name == "cr_validation", "adjusted_p_value"])`, r² = `r round(emhp_merged$r2, 3)`).
 
@@ -515,17 +518,12 @@ __Figure 3:__ _Brain Maintenance and Cognitive Reserve Plots_
 ```{r fig2, echo=FALSE, dpi = 400, fig.width=7, fig.height=4, message=FALSE, warning=FALSE}
 combined_crbm
 ```
-<small>(A) The association between hippocampus annual change and memory annual change, adjusted for cohort/MRI scanner, depicted with a diagonal line representing the BM line. The color code represents the level of BM for a given participant. (B) The same association between hippocampus annual change and memory annual change, adjusted for cohort/MRI scanner, this time depicted with a diagonal line representing the CR line. The color code represents the level of CR for a given participant.</small>
+<small>(A) The association between hippocampus annual change and memory annual change, adjusted for cohort/MRI scanner, depicted with a diagonal line representing the BM line. The color code represents the amount of BM for a given participant. (B) The same association between hippocampus annual change and memory annual change, adjusted for cohort/MRI scanner, this time depicted with a diagonal line representing the CR line. The color code represents the amount of CR for a given participant.</small>
 
-We then created the CR and BM index with participants classified as on the CR pathway (N = `r cr_pathway`/`r total_participants`) or the BM pathway (N = `r bm_pathway`/`r total_participants`) (Figure 4). The mean BM value for participants on the BM pathway was `r round(mean_bm, 3)` (range = `r round(min_bm, 3)` - `r round(max_bm, 3)`), and the mean CR value for participants on the CR pathway was `r round(mean_cr, 3)` (range = `r round(min_cr, 3)` - `r round(max_cr, 3)`).
+We then classified participants as aging CR-like (N = `r cr_pathway`/`r total_participants`) or BM-like (N = `r bm_pathway`/`r total_participants`) (Figure 4). The mean BM value for participants on the BM pathway was `r round(mean_bm, 3)` (range = `r round(min_bm, 3)` - `r round(max_bm, 3)`), and the mean CR value for participants on the CR pathway was `r round(mean_cr, 3)` (range = `r round(min_cr, 3)` - `r round(max_cr, 3)`).
 
 ```{r echo=FALSE, warning=FALSE}
-clean_data <- clean_data %>%
-  mutate(
-    total_cr_bm_test = ifelse(reverse_bm > reverse_cr, reverse_bm, reverse_cr),
-    pathway = ifelse(reverse_bm > reverse_cr, "BM Pathway", "CR Pathway"),
-  )
-
+# Divide data into pathways
 cr_path <- clean_data %>%
   filter(pathway == "CR Pathway")
 
@@ -533,7 +531,7 @@ bm_path <- clean_data %>%
   filter(pathway == "BM Pathway")
 
 # Plot the CR half
-cr_path_plot <- ggplot(cr_path, aes(pathway, total_cr_bm_test, color = reverse_cr, fill = reverse_cr)) +
+cr_path_plot <- ggplot(cr_path, aes(pathway, reverse_cr, color = reverse_cr, fill = reverse_cr)) +
   geom_quasirandom(size = 4) +
   scale_color_gradientn(
     colors = c("#f5d7b0", "#f5be27", "#fa8d00", "#bc507f", "#7E1891", "#1c0159"),
@@ -548,10 +546,12 @@ cr_path_plot <- ggplot(cr_path, aes(pathway, total_cr_bm_test, color = reverse_c
   theme(
     axis.text.x = element_blank(), # Remove x-axis text
     legend.position = "top",
+    axis.title = element_text(size = 13),  # Increase font size
+    axis.text = element_text(size = 13),  
     plot.margin = margin(10, 10, 10, 10)
   ) +
   scale_y_continuous(
-    limits = c(0.7, 2.7), # Replace with your desired limits
+    limits = c(0.5, 2.7), # Replace with your desired limits
     expand = c(0, 0),
     position = "right" # Move y-axis to the right
   ) +
@@ -563,7 +563,7 @@ cr_path_plot <- ggplot(cr_path, aes(pathway, total_cr_bm_test, color = reverse_c
   guides(color = "none", fill = guide_colorbar(title = "Cognitive Reserve"))
 
 # Plot the BM half
-bm_path_plot <- ggplot(bm_path, aes(pathway, total_cr_bm_test, color = reverse_bm, fill = reverse_bm)) +
+bm_path_plot <- ggplot(bm_path, aes(pathway, reverse_bm, color = reverse_bm, fill = reverse_bm)) +
   geom_quasirandom(size = 4) +
   scale_color_gradientn(
     colors = c("#E5E483", "#8ac926", "#4CCD99", "#5BBCFF", "#024CAA", "#00224D"),
@@ -576,7 +576,7 @@ bm_path_plot <- ggplot(bm_path, aes(pathway, total_cr_bm_test, color = reverse_b
   ) +
   theme_minimal() +
   scale_y_continuous(
-    limits = c(0.7, 2.7),
+    limits = c(0.5, 2.7),
     expand = c(0, 0)
   ) +
   labs(
@@ -585,8 +585,10 @@ bm_path_plot <- ggplot(bm_path, aes(pathway, total_cr_bm_test, color = reverse_b
     color = "Brain Maintenance"
   ) +
   theme(
-    axis.text.x = element_blank(), # Remove x-axis text
-    legend.position = "top"
+    axis.text.x = element_blank(),  # Remove x-axis text
+    legend.position = "top",
+    axis.title = element_text(size = 13),  # Increase font size
+    axis.text = element_text(size = 13) 
   ) +
   guides(color = "none", fill = guide_colorbar(title = "Brain Maintenance"))
 
@@ -596,49 +598,81 @@ cr_path_plot <- cr_path_plot + theme(plot.margin = unit(c(0, 0, 0, 0), "cm"))
 
 # Combine the halves
 index_plot <- bm_path_plot + cr_path_plot + plot_layout(ncol = 2, widths = c(1, 1))
+
+# OLDER INDEX PLOT IF NEEDED
+
+# Create breaks for the graph looks nice
+# breaks_values <- c(seq(-5, 5, by = 1), 0)
+# breaks_values <- sort(unique(breaks_values))
+# 
+# index_plot <- ggplot(clean_data, aes(x = total_cr_or_bm, y = 0, fill = pathway)) +
+#   annotate("rect", xmin = 0, xmax = Inf, ymin = -Inf, ymax = Inf, alpha = 0.2, fill = "#d7eaf5") +
+#   annotate("rect", xmin = -Inf, xmax = 0, ymin = -Inf, ymax = Inf, alpha = 0.2, fill = "#ffcfcf") +
+#   annotate("text", x = -1.5, y = 1.9, label = "CR Pathway", color = "black", size = 4, hjust = 0.5) +
+#   annotate("text", x = 1.5, y = 1.9, label = "BM Pathway", color = "black", size = 4, hjust = 0.5) +
+#   geom_violin(trim = FALSE, scale = "width", width = 4, position = position_identity()) +
+#   geom_jitter(aes(color = pathway), shape = 21, size = 2.5, width = 0, height = 1) +
+#   scale_fill_manual(values = c("BM" = "#91c4e3", "CR" = "#FFAAAA")) +
+#   scale_color_manual(values = c("BM" = "#000000", "CR" = "#000000")) +
+#   scale_x_continuous(
+#     name = NULL,
+#     breaks = breaks_values,
+#     labels = abs(breaks_values),
+#     expand = c(0, 0),
+#     limits = c(-2.7, 2.7)
+#   ) +
+#   scale_y_continuous(
+#     limits = c(0, 2.1),
+#     expand = c(0, 0)
+#   ) +
+#   labs(
+#     fill = NULL,
+#     y = "Density",
+#     color = NULL
+#   ) +
+#   theme_minimal() +
+#   theme(
+#     legend.position = "none",
+#     plot.background = element_rect(fill = "white", color = "white"),
+#     plot.margin = margin(t = 0.5, r = 0.5, b = 0.5, l = 0.5, unit = "cm"),
+#     plot.title = element_text(hjust = 0.5)
+#   )
 ```
 
-__Figure 4:__ _Index of Brain Maintenance and Cognitive Reserve_
+__Figure 4:__ _Brain Maintenance and Cognitive Reserve Pathways_
 
-```{r fig3, echo=FALSE, dpi = 400, fig.width=8, fig.height=6, message=FALSE, warning=FALSE}
+```{r fig3, echo=FALSE, dpi = 400, fig.width=8, fig.height=4, message=FALSE, warning=FALSE}
 index_plot
 ```
 
-An index depicting participants as either on the BM or CR pathway. The y-axis represents the total CR for those on the CR path or the total BM for those of the BM path.
+A figure depicting participants as either on the BM or CR pathway. The x-axis represents the total CR value for participants on the CR pathway and the total BM value for participants on the BM pathway. The y-axis represents the density of participants.
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 # Prep the data for visualization
 
-# Divide the data into those on the CR pathway or BM pathway
-cr_data <- clean_data %>%
-  filter(closer_to == "CR")
-
 # Create groups of high and low
-cr_data$reverse_cr_group <- cut(cr_data$reverse_cr,
-  breaks = quantile(cr_data$reverse_cr, probs = seq(0, 1, (1 / 2)), na.rm = TRUE),
+cr_path$reverse_cr_group <- cut(cr_path$reverse_cr,
+  breaks = quantile(cr_path$reverse_cr, probs = seq(0, 1, (1 / 2)), na.rm = TRUE),
   include.lowest = TRUE,
   labels = c("Low CR", "High CR")
 )
 
 # And for BM
-bm_data <- clean_data %>%
-  filter(closer_to == "BM")
-
-bm_data$reverse_bm_group <- cut(bm_data$reverse_bm,
-  breaks = quantile(bm_data$reverse_bm, probs = seq(0, 1, (1 / 2)), na.rm = TRUE),
+bm_path$reverse_bm_group <- cut(bm_path$reverse_bm,
+  breaks = quantile(bm_path$reverse_bm, probs = seq(0, 1, (1 / 2)), na.rm = TRUE),
   include.lowest = TRUE,
   labels = c("Low BM", "High BM")
 )
 
 # Convert df to long
-long_data_vis_cr <- cr_data %>%
+long_data_vis_cr <- cr_path %>%
   pivot_longer(
     cols = matches("^memory\\.\\d$|^age\\.\\d$|^adj_HIP_total\\.\\d$"),
     names_to = c(".value", "timepoint"),
     names_pattern = "(.*)(\\d$)"
   )
 
-long_data_vis_bm <- bm_data %>%
+long_data_vis_bm <- bm_path %>%
   pivot_longer(
     cols = matches("^memory\\.\\d$|^age\\.\\d$|^adj_HIP_total\\.\\d$"),
     names_to = c(".value", "timepoint"),
@@ -718,7 +752,7 @@ bm_age_lme <- get_mixed_effects_stats(
 )
 ```
 
-We then found a significant interaction between CR and age (β = `r round(cr_age_lme$coef, 3)`, _p_ = `r format_p_value(cr_age_lme$p_value)`, _p_<sub>FDR</sub> = `r format_p_value(p_value_df[p_value_df$model_name == "cr_age_lme", "adjusted_p_value"])`, r² = `r round(cr_age_lme$r2, 3)`) and BM and age (β = `r round(bm_age_lme$coef, 3)`, _p_ = `r format_p_value(bm_age_lme$p_value)`, _p_<sub>FDR</sub> = `r format_p_value(p_value_df[p_value_df$model_name == "bm_age_lme", "adjusted_p_value"])`, r² = `r round(bm_age_lme$r2, 3)`) on memory (Table 5). 
+For participants on the CR path, we then found a significant interaction between CR and age (β = `r round(cr_age_lme$coef, 3)`, _p_ = `r format_p_value(cr_age_lme$p_value)`, _p_<sub>FDR</sub> = `r format_p_value(p_value_df[p_value_df$model_name == "cr_age_lme", "adjusted_p_value"])`, r² = `r round(cr_age_lme$r2, 3)`) and, for participants on the BM path, a significant interaction between BM and age (β = `r round(bm_age_lme$coef, 3)`, _p_ = `r format_p_value(bm_age_lme$p_value)`, _p_<sub>FDR</sub> = `r format_p_value(p_value_df[p_value_df$model_name == "bm_age_lme", "adjusted_p_value"])`, r² = `r round(bm_age_lme$r2, 3)`) on memory (Table 5). 
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 # Create the table
@@ -836,12 +870,12 @@ bm_age_plot <- ggplot() +
   theme(legend.position = "bottom")
 
 # Combine the plots into one figure
-combined_plot <- bm_age_plot + cr_age_plot + plot_layout(ncol = 2)
+combined_lme <- bm_age_plot + cr_age_plot + plot_layout(ncol = 2)
 ```
 __Figure 5:__ _The Relationship Between Memory and Age Depicted by CR or BM Group_
 
 ```{r fig4, echo=FALSE, dpi = 400, fig.width=6, fig.height=4, message=FALSE, warning=FALSE}
-combined_plot
+combined_lme
 ```
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
@@ -1376,7 +1410,7 @@ gamm_table <- data.frame(
 )
 ```
 
-We compared a LME and GAMM fit to the memory/adjusted hippocampus volume and age data, while controlling for cohort/MRI scanner. For both models, we allowed a random intercept per participant. To assess model performance, we used the Akaike Information Criterion (AIC), Bayesian Information Criterion (BIC), and a likelihood ratio test (LRT) to compare the GAMM and LME models (Supplementary Table 1). The LRT evaluates whether the inclusion of non-linear terms enhances model fit, with a significant result indicating a preferable fit for the GAMM. The AIC and BIC also help identify the preferred model, with a difference of 10 or more favoring the model with lower values.
+We compared an LME and GAMM fit to the memory/adjusted hippocampus volume and age data, while controlling for cohort/MRI scanner. For both models, we allowed a random intercept per participant. To assess model performance, we used the Akaike Information Criterion (AIC), Bayesian Information Criterion (BIC), and a likelihood ratio test (LRT) to compare the GAMM and LME models (Supplementary Table 1). The LRT evaluates whether the inclusion of non-linear terms enhances model fit, with a significant result indicating a preferable fit for the GAMM. The AIC and BIC also help identify the preferred model, with a difference of 10 or more favoring the model with lower values.
 
 We initially fit the GAMM using a range of basis functions and compared their fit to the LME model. Despite variations in the GAMM fit, the conclusions regarding how the GAMM and the LME model compared did not change. In Supplementary Table 1, we fit the GAMM with four basis functions for the memory model and five basis functions for the adjusted hippocampus model as increasing the number beyond this point did not substantially change the AIC nor BIC values. The smooth age-term was significant in the memory GAMM (effective degrees of freedom (EDF) = `r round(gamm_compare_em_memory$EDF, 3)`, _p_-value = `r format_p_value(gamm_compare_em_memory$p_value_gamm)`, _p_<sub>FDR</sub> = `r format_p_value(p_value_df[p_value_df$model_name == "gamm_memory_gamm", "adjusted_p_value"])`) and the hippocampus GAMM (EDF = `r round(gamm_compare_em_adj_hc$EDF, 3)`, _p_-value = `r format_p_value(gamm_compare_em_adj_hc$p_value_gamm)`, _p_<sub>FDR</sub> = `r format_p_value(p_value_df[p_value_df$model_name == "gamm_hc_gamm", "adjusted_p_value"])`. For the LME models, both models had significant age coefficients (memory: β = `r round(mem_age_lme$coef, 3)`, _p_ = `r format(format_p_value(mem_age_lme$p_value), scientific = FALSE)`, _p_<sub>FDR</sub> = `r format_p_value(p_value_df[p_value_df$model_name == "mem_age_lme", "adjusted_p_value"])`; adjusted hippocampal volume β = `r round(hc_age_lme$coef, 3)`, _p_ = `r format(format_p_value(hc_age_lme$p_value), scientific = FALSE)`, _p_<sub>FDR</sub> = `r format_p_value(p_value_df[p_value_df$model_name == "hc_age_lme", "adjusted_p_value"])`). For memory, the LME and GAMM fits were similar; however, the GAMM fit was better according to AIC and LRT. For adjusted hippocampal volume, the GAMM fit was better according to AIC, BIC, and LRT.
 
