@@ -978,7 +978,7 @@ edu_table_data <- data.frame(
 __Table 6__: _Linear Regressions with Cognitive Reserve / Brain Maintenance and Education_
 ```{r tab6, echo=FALSE} 
 # Format and print the table
-kable(edu_table_data, format = "markdown", col.names = c(" ", "**Cognitive Reserve**", " ", " ", "**Brain Maintenance**", " ", " "))
+kable(edu_table_data, format = "markdown", col.names = c(" ", "**Brain Maintenance**", " ", " ", "**Cognitive Reserve**", " ", " "))
 ```
 
 Note. Models are adjusted for cohort/MRI scanner. _p_-values are adjusted for multiple comparisons using the FDR. Abbreviations: CI Confidence Interval
