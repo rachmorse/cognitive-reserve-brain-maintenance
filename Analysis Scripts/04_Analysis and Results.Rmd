@@ -520,7 +520,7 @@ combined_crbm
 ```
 <small>(A) The association between hippocampus annual change and memory annual change, adjusted for cohort/MRI scanner, depicted with a diagonal line representing the BM line. The color code represents the amount of BM for a given participant. (B) The same association between hippocampus annual change and memory annual change, adjusted for cohort/MRI scanner, this time depicted with a diagonal line representing the CR line. The color code represents the amount of CR for a given participant.</small>
 
-We then classified participants as aging CR-like (N = `r cr_pathway`/`r total_participants`) or BM-like (N = `r bm_pathway`/`r total_participants`) (Figure 4). The mean BM value for participants on the BM pathway was `r round(mean_bm, 3)` (range = `r round(min_bm, 3)` - `r round(max_bm, 3)`), and the mean CR value for participants on the CR pathway was `r round(mean_cr, 3)` (range = `r round(min_cr, 3)` - `r round(max_cr, 3)`).
+We then classified participants as aging CR-like (N = `r cr_pathway`/`r total_participants`) or BM-like (N = `r bm_pathway`/`r total_participants`) (Figure 4). The mean BM amount for participants aging BM-like was  `r round(mean_bm, 3)` (range = `r round(min_bm, 3)` - `r round(max_bm, 3)`), and the mean CR amount for participants aging CR-like was `r round(mean_cr, 3)` (range = `r round(min_cr, 3)` - `r round(max_cr, 3)`).
 
 ```{r echo=FALSE, warning=FALSE}
 # Divide data into pathways
@@ -557,7 +557,7 @@ cr_path_plot <- ggplot(cr_path, aes(pathway, reverse_cr, color = reverse_cr, fil
   ) +
   labs(
     y = "Amount of Cognitive Reserve",
-    x = "Participants on Cognitive Reserve Path",
+    x = "Participants Aging CR-like",
     color = "Cognitive Reserve"
   ) +
   guides(color = "none", fill = guide_colorbar(title = "Cognitive Reserve"))
@@ -581,7 +581,7 @@ bm_path_plot <- ggplot(bm_path, aes(pathway, reverse_bm, color = reverse_bm, fil
   ) +
   labs(
     y = "Amount of Brain Maintenance",
-    x = "Participants on Brain Maintenance Path",
+    x = "Participants Aging BM-like",
     color = "Brain Maintenance"
   ) +
   theme(
@@ -601,15 +601,15 @@ index_plot <- bm_path_plot + cr_path_plot + plot_layout(ncol = 2, widths = c(1, 
 
 # OLDER INDEX PLOT IF NEEDED
 
-# Create breaks for the graph looks nice
+# # Create breaks for the graph looks nice
 # breaks_values <- c(seq(-5, 5, by = 1), 0)
 # breaks_values <- sort(unique(breaks_values))
 # 
 # index_plot <- ggplot(clean_data, aes(x = total_cr_or_bm, y = 0, fill = pathway)) +
 #   annotate("rect", xmin = 0, xmax = Inf, ymin = -Inf, ymax = Inf, alpha = 0.2, fill = "#d7eaf5") +
 #   annotate("rect", xmin = -Inf, xmax = 0, ymin = -Inf, ymax = Inf, alpha = 0.2, fill = "#ffcfcf") +
-#   annotate("text", x = -1.5, y = 1.9, label = "CR Pathway", color = "black", size = 4, hjust = 0.5) +
-#   annotate("text", x = 1.5, y = 1.9, label = "BM Pathway", color = "black", size = 4, hjust = 0.5) +
+#   annotate("text", x = -1.5, y = 1.9, label = "Participants Aging CR-like", color = "black", size = 4, hjust = 0.5) +
+#   annotate("text", x = 1.5, y = 1.9, label = "Participants Aging BM-like", color = "black", size = 4, hjust = 0.5) +
 #   geom_violin(trim = FALSE, scale = "width", width = 4, position = position_identity()) +
 #   geom_jitter(aes(color = pathway), shape = 21, size = 2.5, width = 0, height = 1) +
 #   scale_fill_manual(values = c("BM" = "#91c4e3", "CR" = "#FFAAAA")) +
@@ -645,7 +645,7 @@ __Figure 4:__ _Brain Maintenance and Cognitive Reserve Pathways_
 index_plot
 ```
 
-A figure depicting participants as either on the BM or CR pathway. The x-axis represents the total CR value for participants on the CR pathway and the total BM value for participants on the BM pathway. The y-axis represents the density of participants.
+A figure depicting participants as aging either BM-like or CR-like. The x-axis represents the total amount of CR for participants aging CR-like and the total amount of BM for participants aging BM-like. The y-axis represents the density of participants.
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 # Prep the data for visualization
@@ -752,7 +752,7 @@ bm_age_lme <- get_mixed_effects_stats(
 )
 ```
 
-For participants on the CR path, we then found a significant interaction between CR and age (β = `r round(cr_age_lme$coef, 3)`, _p_ = `r format_p_value(cr_age_lme$p_value)`, _p_<sub>FDR</sub> = `r format_p_value(p_value_df[p_value_df$model_name == "cr_age_lme", "adjusted_p_value"])`, r² = `r round(cr_age_lme$r2, 3)`) and, for participants on the BM path, a significant interaction between BM and age (β = `r round(bm_age_lme$coef, 3)`, _p_ = `r format_p_value(bm_age_lme$p_value)`, _p_<sub>FDR</sub> = `r format_p_value(p_value_df[p_value_df$model_name == "bm_age_lme", "adjusted_p_value"])`, r² = `r round(bm_age_lme$r2, 3)`) on memory (Table 5). 
+For participants aging CR-like, we then found a significant interaction between CR and age (β = `r round(cr_age_lme$coef, 3)`, _p_ = `r format_p_value(cr_age_lme$p_value)`, _p_<sub>FDR</sub> = `r format_p_value(p_value_df[p_value_df$model_name == "cr_age_lme", "adjusted_p_value"])`, r² = `r round(cr_age_lme$r2, 3)`) and, for participants aging BM-like, a significant interaction between BM and age (β = `r round(bm_age_lme$coef, 3)`, _p_ = `r format_p_value(bm_age_lme$p_value)`, _p_<sub>FDR</sub> = `r format_p_value(p_value_df[p_value_df$model_name == "bm_age_lme", "adjusted_p_value"])`, r² = `r round(bm_age_lme$r2, 3)`) on memory (Table 5). 
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 # Create the table
@@ -826,7 +826,7 @@ cr_age_plot <- ggplot() +
   geom_line(data = predictions, aes(x = age, y = predicted, color = as.factor(reverse_cr_group)), size = 1.2) + # Plot predicted lines for each group
   scale_color_manual(values = palette) +
   scale_fill_manual(values = palette) + # Ensure fill colors match line colors
-  labs(x = "Age", y = "Memory", color = "Group", fill = "Group", title = "CR Pathway") +
+  labs(x = "Age", y = "Memory", color = "Group", fill = "Group", title = "Participants Aging CR-like") +
   theme_minimal() +
   theme(legend.position = "bottom")
 ```
@@ -865,7 +865,7 @@ bm_age_plot <- ggplot() +
   geom_line(data = predictions, aes(x = age, y = predicted, color = as.factor(reverse_bm_group)), size = 1.2) + # Plot predicted lines for each group
   scale_color_manual(values = palette) +
   scale_fill_manual(values = palette) + # Ensure fill colors match line colors
-  labs(x = "Age", y = "Memory", color = "Group", fill = "Group", title = "BM Pathway") +
+  labs(x = "Age", y = "Memory", color = "Group", fill = "Group", title = "Participants Aging BM-like") +
   theme_minimal() +
   theme(legend.position = "bottom")
 
@@ -909,7 +909,7 @@ suppressMessages({
   low_bm_age_unscaled <- get_mixed_effects_stats((memory) ~ (age) + (1 | id), data = low_bm, vars_unscale)
 })
 ```
-<small>(A) The association between memory and age depicted divided into two groups: high BM (blue) and low BM (green). There are linear mixed effects models for each group with the high BM group displaying a coefficient of `r round(high_bm_age_unscaled$coef, 3)` (scaled: `r round(high_bm_age$coef, 3)`) and the low BM group displaying a coefficient of `r round(low_bm_age_unscaled$coef, 3)` (scaled: `r round(low_bm_age$coef, 3)`) and confidence intervals. (B) The association between memory and age depicted divided into high CR (purple) and low CR (orange) with the high CR group displaying a coefficient of `r round(high_cr_age_unscaled$coef, 3)` (scaled: `r round(high_cr_age$coef, 3)`) and the low CR group displaying a coefficient of `r round(low_cr_age_unscaled$coef, 3)` (scaled: `r round(low_cr_age$coef, 3)`) and confidence intervals.</small>
+<small>(A) The association between memory and age, among participants aging BM-like, depicted divided into two groups: high BM (blue) and low BM (green). There are linear mixed effects models for each group with the high BM group displaying a coefficient of `r round(high_bm_age_unscaled$coef, 3)` (scaled: `r round(high_bm_age$coef, 3)`) and the low BM group displaying a coefficient of `r round(low_bm_age_unscaled$coef, 3)` (scaled: `r round(low_bm_age$coef, 3)`) and confidence intervals. (B) The association between memory and age, among participants aging CR-like, depicted divided into high CR (purple) and low CR (orange) with the high CR group displaying a coefficient of `r round(high_cr_age_unscaled$coef, 3)` (scaled: `r round(high_cr_age$coef, 3)`) and the low CR group displaying a coefficient of `r round(low_cr_age_unscaled$coef, 3)` (scaled: `r round(low_cr_age$coef, 3)`) and confidence intervals.</small>
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 # Education and CR / BM
