@@ -15,7 +15,7 @@ To recreate these variables using episodic memory and hippocampal volume, follow
 ### Data Requirements
 
 - At least two time points of data
-- Episodic memory variable or multiple variables
+- Episodic memory variable/s
 - Brain structure variable (e.g., hippocampal volume)
 - Participant ages
 
@@ -187,20 +187,18 @@ data <- data %>%
 
 With your standard variable names and required calculations complete, you can run the rest of this code without needed to make any more modifications. 
 
-This creates a centered and scaled version of the hippocampus and memory annual change variables.
+This creates a scaled version of the hippocampus and memory annual change variables.
 
 ```{r}
 data <- data %>%
   mutate(
-    hippocampus_slopes_centered = hippocampus_slopes - mean(hippocampus_slopes, na.rm = TRUE),
-    memory_slopes_centered = memory_slopes - mean(memory_slopes, na.rm = TRUE),
-    hippocampus_slopes_scaled_centered = hippocampus_slopes_centered / max(
-      abs(min(hippocampus_slopes_centered, na.rm = TRUE)),
-      abs(max(hippocampus_slopes_centered, na.rm = TRUE))
+    hippocampus_slopes_scaled = hippocampus_slopes / max(
+      abs(min(hippocampus_slopes, na.rm = TRUE)),
+      abs(max(hippocampus_slopes, na.rm = TRUE))
     ),
-    memory_slopes_scaled_centered = memory_slopes_centered / max(
-      abs(min(memory_slopes_centered, na.rm = TRUE)),
-      abs(max(memory_slopes_centered, na.rm = TRUE))
+    memory_slopes_scaled = memory_slopes / max(
+      abs(min(memory_slopes, na.rm = TRUE)),
+      abs(max(memory_slopes, na.rm = TRUE))
     )
   )
 ```
@@ -231,8 +229,8 @@ distance_to_bm_line <- function(y, x) {
 # Calculate BM variable
 data <- data %>%
   mutate(
-    dist_to_bm_point = distance_to_bm_point(memory_slopes_scaled_centered, hippocampus_slopes_scaled_centered),
-    dist_to_bm_line = distance_to_bm_line(memory_slopes_scaled_centered, hippocampus_slopes_scaled_centered),
+    dist_to_bm_point = distance_to_bm_point(memory_slopes_scaled, hippocampus_slopes_scaled),
+    dist_to_bm_line = distance_to_bm_line(memory_slopes_scaled, hippocampus_slopes_scaled),
     brain_maintenance = 3.414214 - (dist_to_bm_point + dist_to_bm_line)
   )
 ```
@@ -263,21 +261,19 @@ distance_to_cr_line <- function(y, x) {
 # Calculate CR variable
 data <- data %>%
   mutate(
-    dist_to_cr_point = distance_to_cr_point(memory_slopes_scaled_centered, hippocampus_slopes_scaled_centered),
-    dist_to_cr_line = distance_to_cr_line(memory_slopes_scaled_centered, hippocampus_slopes_scaled_centered),
+    dist_to_cr_point = distance_to_cr_point(memory_slopes_scaled, hippocampus_slopes_scaled),
+    dist_to_cr_line = distance_to_cr_line(memory_slopes_scaled, hippocampus_slopes_scaled),
     cognitive_reserve = 3.414214 - (dist_to_cr_point + dist_to_cr_line)
   )
 ```
 
-Lastly, this makes an index to represent whether someone is aging more brain maintenance or cognitive reserve like and calculates their level of resilience (or their total amount of brain maintenance + cognitive reserve).
+Lastly, this calculates whether someone is aging more brain maintenance or cognitive reserve-like.
 
 ```{r}
-# Classify as closer to BM or CR and calculate the indices
+# Classify as on the BM or CR aging pathway
 data <- data %>%
   mutate(
-    closer_to = ifelse(brain_maintenance > cognitive_reserve, "Brain Maintenance", "Cognitive Reserve"),
-    index = ifelse(closer_to == "Brain Maintenance", (brain_maintenance / cognitive_reserve) - 1, (-(cognitive_reserve / brain_maintenance)) + 1), # need to -1 or +1 to make the axis center around 0
-    resilience = abs(brain_maintenance) + abs(cognitive_reserve)
+    pathway = ifelse(dist_to_cr_line > dist_to_bm_line, "Brain Maintenance Pathway", "Cognitive Reserve Pathway")
   )
 ```
 

@@ -143,20 +143,18 @@ emhc_data <- merge(clean_data, emhc_data, by = c("id"), all = TRUE)
 
 Using the new formula to calculate a BM continuous variable 
 ```{r}
-# First create a scaled and centered version of the HC and memory annual change variables using the residuals
+# First create a scaled version of the HC and memory annual change variables using the residuals
 emhc_data <- emhc_data %>%
   mutate(
-    hippocampus_slopes_centered = res_hc_slopes - mean(res_hc_slopes, na.rm = TRUE),
-    memory_slopes_centered = res_mem_slopes - mean(res_mem_slopes, na.rm = TRUE),
     res_hc_slopes_scaled =
-      hippocampus_slopes_centered / max(
-        abs(min(hippocampus_slopes_centered, na.rm = TRUE)),
-        abs(max(hippocampus_slopes_centered, na.rm = TRUE))
+      res_hc_slopes / max(
+        abs(min(res_hc_slopes, na.rm = TRUE)),
+        abs(max(res_hc_slopes, na.rm = TRUE))
       ),
     res_mem_slopes_scaled =
-      memory_slopes_centered / max(
-        abs(min(memory_slopes_centered, na.rm = TRUE)),
-        abs(max(memory_slopes_centered, na.rm = TRUE))
+      res_mem_slopes / max(
+        abs(min(res_mem_slopes, na.rm = TRUE)),
+        abs(max(res_mem_slopes, na.rm = TRUE))
       )
   )
 
@@ -240,7 +238,7 @@ ggplot(emhc_data, aes(x = dist_to_double_cr)) +
   geom_histogram(fill = "lightpink", color = "black", binwidth = 0.1)
 ```
 
-Now make an index to represent whether someone is more on a BM or CR path and how far along the path they are. Start by inversing BM and CR so that high values are good
+Now inverse BM and CR so that high values are good
 ```{r}
 # Define function to reverse the CR / BM variables using their possible min and max values
 reverse_values <- function(values) {
@@ -257,20 +255,6 @@ emhc_data$reverse_cr <- reverse_values(emhc_data$dist_to_double_cr)
 # Check that the output is ok
 reversed <- emhc_data %>%
   select(id, reverse_bm, dist_to_double_bm, reverse_cr, dist_to_double_cr)
-```
-
-Now take the reversed variables to make the index
-```{r}
-# Classify as closer to BM or CR and calculate the indices
-emhc_data <- emhc_data %>%
-  mutate(
-    closer_to = ifelse(reverse_bm > reverse_cr, "BM", "CR"),
-    index = ifelse(closer_to == "BM", (reverse_bm / reverse_cr) - 1, (-(reverse_cr / reverse_bm)) + 1) # need to -1 or +1 to make the axis center around 0
-  )
-
-# Check that everything looks ok
-index_df <- emhc_data %>%
-  select(id, reverse_cr, dist_to_double_cr, reverse_bm, dist_to_double_bm, closer_to, index)
 ```
 
 Now write the data frames as CSVs

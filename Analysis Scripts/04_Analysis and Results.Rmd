@@ -421,7 +421,6 @@ Note. Models are adjusted for age, sex, education, follow-up time, and cohort/MR
 # Calculate the combined CR and BM value
 clean_data <- clean_data %>%
   mutate(
-    total_cr_or_bm = ifelse(reverse_bm > reverse_cr, reverse_bm, -reverse_cr),
     pathway = ifelse(dist_to_cr_line > dist_to_bm_line, "BM Pathway", "CR Pathway"),
   )
 
@@ -463,14 +462,14 @@ We established CR and BM variables (Figure 3). In a model with hippocampal annua
 custom_colors_bm <- c("#E5E483", "#8ac926", "#4CCD99", "#5BBCFF", "#024CAA", "#00224D")
 custom_colors_cr <- c("#f5d7b0", "#f5be27", "#fa8d00", "#bc507f", "#7E1891", "#1c0159")
 
-cr_plot <- ggplot(clean_data, aes(y = res_mem_slopes_scaled, x = res_hc_slopes_scaled, color = (reverse_cr))) +
+cr_plot <- ggplot(clean_data, aes(y = res_mem_slopes, x = res_hc_slopes, color = (reverse_cr))) +
   geom_point(size = 2) +
   scale_color_gradientn(
     colors = custom_colors_cr,
     limits = c(0.55, 2.59),
     values = c(0, 1 / 3, 2 / 3, 1) # Values mapped to scale so both figures have the same scale
   ) +
-  geom_abline(slope = -(abs(max(clean_data$res_mem_slopes_scaled))) / (abs(min(clean_data$res_hc_slopes_scaled))), intercept = 0, color = "grey", size = 1) +
+  geom_abline(slope = -(abs(max(clean_data$res_mem_slopes))) / (abs(min(clean_data$res_hc_slopes))), intercept = 0, color = "grey", size = 1) +
   geom_abline(slope = 0, intercept = 0, color = "grey", size = 1) +
   geom_abline(slope = 10000, intercept = 0, color = "grey", size = 1) +
   labs(
@@ -480,10 +479,10 @@ cr_plot <- ggplot(clean_data, aes(y = res_mem_slopes_scaled, x = res_hc_slopes_s
   ) +
   theme_minimal() +
   theme(legend.position = "bottom") +
-  xlim(-1, 1) +
-  ylim(-1, 1)
+  xlim(-400, 300) +
+  ylim(-0.6, 0.8)
 
-bm_plot <- ggplot(clean_data, aes(y = res_mem_slopes_scaled, x = res_hc_slopes_scaled, color = reverse_bm)) +
+bm_plot <- ggplot(clean_data, aes(y = res_mem_slopes, x = res_hc_slopes, color = reverse_bm)) +
   geom_point(size = 2) +
   scale_color_gradientn(
     colors = custom_colors_bm,
@@ -491,7 +490,7 @@ bm_plot <- ggplot(clean_data, aes(y = res_mem_slopes_scaled, x = res_hc_slopes_s
     values = c(0, 1 / 3, 2 / 3, 1) # Values mapped to scale so both figures have the same scale
   ) +
   geom_abline(
-    slope = (abs(max(clean_data$res_mem_slopes_scaled)) / abs(min(clean_data$res_hc_slopes_scaled))),
+    slope = (abs(max(clean_data$res_mem_slopes)) / abs(min(clean_data$res_hc_slopes))),
     intercept = 0,
     color = "grey",
     size = 1
@@ -505,8 +504,8 @@ bm_plot <- ggplot(clean_data, aes(y = res_mem_slopes_scaled, x = res_hc_slopes_s
   ) +
   theme_minimal() +
   theme(legend.position = "bottom") +
-  xlim(-1, 1) +
-  ylim(-1, 1)
+  xlim(-400, 300) +
+  ylim(-0.6, 0.8)
 
 # Combine the plots into one figure
 combined_crbm <- bm_plot + cr_plot + plot_layout(ncol = 2)
