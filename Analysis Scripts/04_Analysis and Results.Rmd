@@ -71,6 +71,10 @@ if (!require("ggbeeswarm")) {
   install.packages("ggbeeswarm")
   require("ggbeeswarm")
 }
+if (!require("ggeffects")) {
+  install.packages("ggeffects")
+  require("ggeffects")
+}
 ```
 
 ```{r echo=FALSE, warning=FALSE}
@@ -329,13 +333,36 @@ edu_long <- get_regression_stats(scale(memory_slopes) ~ study + scale(age_baseli
 Hippocampus annual change and memory annual change were significantly correlated (β = `r round(emhp_merged$coef, 3)`, _p_ = `r format_p_value(emhp_merged$p_value)`, _p_<sub>FDR</sub> = `r format_p_value(p_value_df[p_value_df$model_name == "emhp_merged", "adjusted_p_value"])`, r² = `r round(emhp_merged$r2, 3)`) (Figure 2). Cross-sectionally, hippocampal volume and memory were not significantly correlated at baseline (_p_ = `r format_p_value(model_baseline$p_value)`, _p_<sub>FDR</sub> = `r format_p_value(p_value_df[p_value_df$model_name == "model_baseline", "adjusted_p_value"])`) but were significantly correlated at follow-up (β = `r round(model_followup$coef, 3)`, _p_ = `r format_p_value(model_followup$p_value)`, _p_<sub>FDR</sub> = `r format_p_value(p_value_df[p_value_df$model_name == "model_followup", "adjusted_p_value"])`, r² = `r round(model_followup$r2, 3)`). Education was only a significant predictor of memory cross-sectionally at baseline (β = `r round(edu_baseline$coef, 3)`, _p_ = `r format_p_value(edu_baseline$p_value)`, _p_<sub>FDR</sub> = `r format_p_value(p_value_df[p_value_df$model_name == "edu_baseline", "adjusted_p_value"])`, r² = `r round(edu_baseline$r2, 3)`) and at follow-up (β = `r round(edu_followup$coef, 3)`, _p_ = `r format(format_p_value(edu_followup$p_value), scientific = FALSE)`, _p_<sub>FDR</sub> = `r format_p_value(p_value_df[p_value_df$model_name == "edu_followup", "adjusted_p_value"])`, r² = `r round(edu_followup$r2, 3)`) but not longitudinally (_p_ = `r format(format_p_value(edu_long$p_value), scientific = FALSE)`, _p_<sub>FDR</sub> = `r format_p_value(p_value_df[p_value_df$model_name == "edu_long", "adjusted_p_value"])`). These results are summarized in Table 4. 
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
-# Plot without colors by cohort
-mem_hc_plot <- ggplot(clean_data, aes(y = res_mem_slopes, x = res_hc_slopes)) +
-  geom_point() +
-  geom_smooth(
-    method = "lm",
-    color = "#86B6F6",
+# 1) Fit the lm model
+lm_mem_hc_study <- lm(memory_slopes ~ hc_slopes + study,
+               data = clean_data)
+
+# 2) Generate predicted values 
+pred_data <- ggpredict(
+  lm_mem_hc_study, 
+  terms = "hc_slopes[all]"  # The predictor for the x-axis
+)
+
+# 3) Plot partial effect of hc_slopes on memory_slopes
+mem_hc_plot <- ggplot() +
+  geom_point(
+    data = clean_data, 
+    aes(x = hc_slopes, y = memory_slopes), 
+    alpha = 0.5
+  ) +
+  # Confidence ribbon from ggpredict
+  geom_ribbon(
+    data = pred_data, 
+    aes(x = x, ymin = conf.low, ymax = conf.high),
+    alpha = 0.3, 
     fill = "#B4D4FF"
+  ) +
+  # Predicted line
+  geom_line(
+    data = pred_data, 
+    aes(x = x, y = predicted), 
+    size = 1.2,
+    color = "#86B6F6"
   ) +
   labs(
     y = "Memory Annual Change",
@@ -1049,9 +1076,95 @@ clean_data$reverse_cr_group <- cut(clean_data$reverse_cr,
   labels = c("Low CR", "High CR")
 )
 
-ec_int <- ggplot(clean_data, aes(x = res_ec_slopes, y = res_mem_slopes, color = reverse_cr_group)) +
-  geom_point() +
-  geom_smooth(method = "lm", aes(fill = reverse_cr_group), alpha = 0.3) +
+# 1) Fit a model for sn_slopes, controlling for study and grouping by reverse_cr_group
+fit_sn <- lm(memory_slopes ~ sn_slopes * reverse_cr_group + study,
+             data = clean_data)
+
+# 2) Use ggpredict() to get the partial‐effect data
+#    "reverse_cr_group" is used as a by‐variable to get separate lines
+pred_sn <- ggpredict(fit_sn, terms = c("sn_slopes[all]", "reverse_cr_group"))
+
+# 3) Plot memory_slopes plus the partial‐effect lines
+sn_int <- ggplot() +
+  # Raw data, colored by group
+  geom_point(
+    data = clean_data,
+    aes(
+      x = sn_slopes, 
+      y = memory_slopes, 
+      color = reverse_cr_group
+    ),
+    alpha = 0.6
+  ) +
+  # Confidence‐band ribbon
+  geom_ribbon(
+    data = pred_sn,
+    aes(
+      x = x, 
+      ymin = conf.low, 
+      ymax = conf.high, 
+      fill = group
+    ),
+    alpha = 0.3
+  ) +
+  # Fitted lines
+  geom_line(
+    data = pred_sn,
+    aes(
+      x = x,
+      y = predicted,
+      color = group
+    ),
+    size = 1.1
+  ) +
+  labs(
+    y = "Memory Annual Change",
+    x = "Anterior SN Annual Change",
+    title = "Anterior Salience Network",
+    color = "Group",
+    fill = "Group"
+  ) +
+  theme_minimal() +
+  theme(
+    legend.position = "bottom", # Move legend to the bottom
+    plot.title = element_text(hjust = 0.5)
+  )
+
+# 4) Repeat the same steps for ec_slopes:
+fit_ec <- lm(memory_slopes ~ ec_slopes * reverse_cr_group + study,
+             data = clean_data)
+
+pred_ec <- ggpredict(fit_ec, terms = c("ec_slopes[all]", "reverse_cr_group"))
+
+ec_int <- ggplot() +
+  geom_point(
+    data = clean_data,
+    aes(
+      x = ec_slopes, 
+      y = memory_slopes, 
+      color = reverse_cr_group
+    ),
+    alpha = 0.6
+  ) +
+  geom_ribbon(
+    data = pred_ec,
+    aes(
+      x = x,
+      ymin = conf.low,
+      ymax = conf.high,
+      fill = group
+    ),
+    alpha = 0.3
+  ) +
+  geom_line(
+    data = pred_ec,
+    aes(
+      x = x,
+      y = predicted,
+      color = group
+    ),
+    size = 1.1
+  ) +
   labs(
     y = "Memory Annual Change",
     x = "ECN Annual Change",
@@ -1065,24 +1178,8 @@ ec_int <- ggplot(clean_data, aes(x = res_ec_slopes, y = res_mem_slopes, color = 
     plot.title = element_text(hjust = 0.5)
   )
 
-sn_int <- ggplot(clean_data, aes(x = res_sn_slopes, y = res_mem_slopes, color = reverse_cr_group)) +
-  geom_point() +
-  geom_smooth(method = "lm", aes(fill = reverse_cr_group), alpha = 0.3) +
-  labs(
-    y = "Memory Annual Change",
-    x = "Anterior SN Annual Change",
-    title = "Anterior Salience Network",
-    color = "Group",
-    fill = "Group"
-  ) +
-  theme_minimal() +
-  theme(
-    legend.position = "bottom",
-    plot.title = element_text(hjust = 0.5)
-  )
-
-# Combine the plots into one figure
-combined_plot <- sn_int + ec_int + plot_layout(ncol = 2)
+# 5) Combine the two plots side by side
+combined_plot <- sn_int + ec_int
 ```
 
 __Figure 6:__ _The Interaction Between Cognitive Reserve, Functional Connectivity Change, and Memory Change_
