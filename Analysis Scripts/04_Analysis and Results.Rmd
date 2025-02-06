@@ -71,9 +71,9 @@ if (!require("ggbeeswarm")) {
   install.packages("ggbeeswarm")
   require("ggbeeswarm")
 }
-if (!require("ggeffects")) {
-  install.packages("ggeffects")
-  require("ggeffects")
+if (!require("emmeans")) {
+  install.packages("emmeans")
+  require("emmeans")
 }
 ```
 
@@ -334,33 +334,36 @@ Hippocampus annual change and memory annual change were significantly correlated
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 # 1) Fit the lm model
-lm_mem_hc_study <- lm(memory_slopes ~ hc_slopes + study,
-               data = clean_data)
+lm_mem_hc_study <- lm(memory_slopes ~ hc_slopes + study + age_baseline + mem_time + sex + edu, data = clean_data)
 
-# 2) Generate predicted values 
-pred_data <- ggpredict(
-  lm_mem_hc_study, 
-  terms = "hc_slopes[all]"  # The predictor for the x-axis
+## 2) Create a reference grid over a range of hc_slopes
+rg_mem_hc <- ref_grid(
+  lm_mem_hc_study,
+  at = list(hc_slopes = seq(
+    from = min(clean_data$hc_slopes),
+    to = max(clean_data$hc_slopes),
+    length.out = 50
+  )),
+  # The next line averages across "study" by default
 )
 
-# 3) Plot partial effect of hc_slopes on memory_slopes
-mem_hc_plot <- ggplot() +
+## 3) Get the predicted means for that grid
+em_means_mem_hc <- emmeans(rg_mem_hc, ~hc_slopes)
+em_df_mem_hc <- as.data.frame(em_means_mem_hc)
+
+## 4) Plot the “average” slope with confidence bands
+mem_hc_plot <- ggplot(em_df_mem_hc, aes(x = hc_slopes, y = emmean)) +
   geom_point(
-    data = clean_data, 
-    aes(x = hc_slopes, y = memory_slopes), 
+    data = clean_data,
+    aes(x = hc_slopes, y = memory_slopes),
     alpha = 0.5
   ) +
-  # Confidence ribbon from ggpredict
   geom_ribbon(
-    data = pred_data, 
-    aes(x = x, ymin = conf.low, ymax = conf.high),
-    alpha = 0.3, 
-    fill = "#B4D4FF"
+    aes(ymin = lower.CL, ymax = upper.CL),
+    fill = "#B4D4FF",
+    alpha = 0.2
   ) +
-  # Predicted line
   geom_line(
-    data = pred_data, 
-    aes(x = x, y = predicted), 
     size = 1.2,
     color = "#86B6F6"
   ) +
@@ -383,7 +386,7 @@ __Figure 2:__ _Memory Annual Change vs Hippocampal Annual Change_
 mem_hc_plot
 ```
 
-The association between memory annual change and hippocampus annual change, controlled for MRI scanner/cohort, with a linear model with a coefficient of `r format(round(emhp_merged_unscaled$coef, 4), scientific = FALSE)` (scaled: `r round(emhp_merged$coef, 4)`) and confidence intervals. 
+The association between memory annual change and hippocampus annual change plotted with a linear model that controls for all covariates with a coefficient of `r format(round(emhp_merged_unscaled$coef, 4), scientific = FALSE)` (scaled: `r round(emhp_merged$coef, 4)`) and confidence intervals. 
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 # Create the table
@@ -477,31 +480,45 @@ cr_var <- c(
   "scale(reverse_cr)"
 )
 
-# Running the regression model
+bm_var <- c(
+  "scale(reverse_bm)"
+)
+
+int_var <- c(
+  "scale(hc_slopes):factor(pathway)CR Pathway"
+)
+
+# Running sensitivity analyses
 cr_validation <- get_regression_stats(scale(memory_slopes) ~ scale(hc_slopes) + scale(reverse_cr) + study + scale(age_baseline) + scale(mem_time) + sex + scale(edu), data = clean_data, cr_var)
+
+bm_cr_mem <- get_regression_stats(scale(memory_slopes) ~ scale(reverse_cr) + scale(reverse_bm) + study + scale(age_baseline) + scale(mem_time) + sex + scale(edu), data = clean_data, bm_var)
+
+cr_bm_mem <- get_regression_stats(scale(memory_slopes) ~ scale(reverse_cr) + scale(reverse_bm) + study + scale(age_baseline) + scale(mem_time) + sex + scale(edu), data = clean_data, cr_var)
+
+cr_bm_hc_mem <- get_regression_stats(scale(memory_slopes) ~ scale(hc_slopes) * factor(pathway) + study + scale(age_baseline) + scale(mem_time) + sex + scale(edu), data = clean_data, int_var)
 ```
 
 __**CR and BM Variables:**__
 
-We established CR and BM variables (Figure 3). In a model with hippocampal annual change included, we found that CR remained a  significant predictor of memory annual change (β = `r round(cr_validation$coef, 3)`, _p_ = `r format_p_value(cr_validation$p_value)`, _p_<sub>FDR</sub> = `r format_p_value(p_value_df[p_value_df$model_name == "cr_validation", "adjusted_p_value"])`, r² = `r round(emhp_merged$r2, 3)`). 
+We established CR and BM variables (Figure 3). In a model with hippocampal annual change included, we found that CR remained a  significant predictor of memory annual change (β = `r round(cr_validation$coef, 3)`, _p_ = `r format_p_value(cr_validation$p_value)`, _p_<sub>FDR</sub> = `r format_p_value(p_value_df[p_value_df$model_name == "cr_validation", "adjusted_p_value"])`, r² = `r round(cr_validation$r2, 3)`). Additionally, in a model with both CR and BM included, both variables were independently significant predictors of memory annual change (CR β = `r round(cr_bm_mem$coef, 3)`, _p_ = `r format_p_value(cr_bm_mem$p_value)`, _p_<sub>FDR</sub> = `r format_p_value(p_value_df[p_value_df$model_name == "cr_bm_mem", "adjusted_p_value"])`, r² = `r round(cr_bm_mem$r2, 3)`; BM β = `r round(bm_cr_mem$coef, 3)`, _p_ = `r format_p_value(bm_cr_mem$p_value)`, _p_<sub>FDR</sub> = `r format_p_value(p_value_df[p_value_df$model_name == "bm_cr_mem", "adjusted_p_value"])`, r² = `r round(bm_cr_mem$r2, 3)`).  
 
 ```{r echo=FALSE, warning=FALSE}
 custom_colors_bm <- c("#E5E483", "#8ac926", "#4CCD99", "#5BBCFF", "#024CAA", "#00224D")
 custom_colors_cr <- c("#f5d7b0", "#f5be27", "#fa8d00", "#bc507f", "#7E1891", "#1c0159")
 
-cr_plot <- ggplot(clean_data, aes(y = res_mem_slopes, x = res_hc_slopes, color = (reverse_cr))) +
-  geom_point(size = 2) +
+cr_plot <- ggplot(clean_data, aes(y = res_mem_slopes_age, x = res_hc_slopes_age, color = (reverse_cr))) +
+  geom_point(size = 2, alpha = 0.7) +
   scale_color_gradientn(
     colors = custom_colors_cr,
-    limits = c(0.55, 2.59),
+    limits = c(0.5, 2.75),
     values = c(0, 1 / 3, 2 / 3, 1) # Values mapped to scale so both figures have the same scale
   ) +
-  geom_abline(slope = -(abs(max(clean_data$res_mem_slopes))) / (abs(min(clean_data$res_hc_slopes))), intercept = 0, color = "grey", size = 1) +
-  geom_abline(slope = 0, intercept = 0, color = "grey", size = 1) +
-  geom_abline(slope = 10000, intercept = 0, color = "grey", size = 1) +
+  geom_abline(slope = -(abs(max(clean_data$res_mem_slopes_age))) / (abs(min(clean_data$res_hc_slopes_age))), intercept = 0, color = "grey", size = 1, alpha = 0.7) +
+  geom_abline(slope = 0, intercept = 0, color = "grey", size = 1, alpha = 0.7) +
+  geom_abline(slope = 10000, intercept = 0, color = "grey", size = 1, alpha = 0.7) +
   labs(
-    y = "Memory Annual Change",
-    x = "Hippocampus Annual Change",
+    y = "Memory Change (age-adjusted)",
+    x = "Hippocampus Change (age-adjusted)",
     color = "Cognitive Reserve"
   ) +
   theme_minimal() +
@@ -509,24 +526,25 @@ cr_plot <- ggplot(clean_data, aes(y = res_mem_slopes, x = res_hc_slopes, color =
   xlim(-400, 300) +
   ylim(-0.6, 0.8)
 
-bm_plot <- ggplot(clean_data, aes(y = res_mem_slopes, x = res_hc_slopes, color = reverse_bm)) +
-  geom_point(size = 2) +
+bm_plot <- ggplot(clean_data, aes(y = res_mem_slopes_age, x = res_hc_slopes_age, color = reverse_bm)) +
+  geom_point(size = 2, alpha = 0.7) +
   scale_color_gradientn(
     colors = custom_colors_bm,
-    limits = c(0.5, 2.6),
+    limits = c(0.5, 2.75),
     values = c(0, 1 / 3, 2 / 3, 1) # Values mapped to scale so both figures have the same scale
   ) +
   geom_abline(
-    slope = (abs(max(clean_data$res_mem_slopes)) / abs(min(clean_data$res_hc_slopes))),
+    slope = (abs(max(clean_data$res_mem_slopes_age)) / abs(min(clean_data$res_hc_slopes_age))),
     intercept = 0,
     color = "grey",
-    size = 1
+    size = 1,
+    alpha = 0.7
   ) +
-  geom_abline(slope = 0, intercept = 0, color = "grey", size = 1) +
-  geom_abline(slope = 10000, intercept = 0, color = "grey", size = 1) +
+  geom_abline(slope = 0, intercept = 0, color = "grey", size = 1, alpha = 0.7) +
+  geom_abline(slope = 10000, intercept = 0, color = "grey", size = 1, alpha = 0.7) +
   labs(
-    y = "Memory Annual Change",
-    x = "Hippocampus Annual Change",
+    y = "Memory Change (age-adjusted)",
+    x = "Hippocampus Change (age-adjusted)",
     color = "Brain Maintenance"
   ) +
   theme_minimal() +
@@ -543,9 +561,9 @@ __Figure 3:__ _Brain Maintenance and Cognitive Reserve Plots_
 ```{r fig2, echo=FALSE, dpi = 400, fig.width=7, fig.height=4, message=FALSE, warning=FALSE}
 combined_crbm
 ```
-<small>(A) The association between hippocampus annual change and memory annual change, adjusted for cohort/MRI scanner, depicted with a diagonal line representing the BM line. The color code represents the BM value for a given participant. (B) The same association between hippocampus annual change and memory annual change, adjusted for cohort/MRI scanner, this time depicted with a diagonal line representing the CR line. The color code represents the CR value for a given participant.</small>
+<small>(A) The association between hippocampus annual change and memory annual change, adjusted for baseline age, depicted with a diagonal line representing the BM line. The color code represents the BM value for a given participant. (B) The same association between hippocampus annual change and memory annual change, adjusted for cohort/MRI scanner, this time depicted with a diagonal line representing the CR line. The color code represents the CR value for a given participant.</small>
 
-We then classified participants as aging CR-like (N = `r cr_pathway`/`r total_participants`) or BM-like (N = `r bm_pathway`/`r total_participants`) based on their distance to the corresponding CR or BM line (as depicted in Figure 1). The mean BM value for participants aging BM-like was  `r round(mean_bm, 3)` (range = `r round(min_bm, 3)` - `r round(max_bm, 3)`), and the mean CR value for participants aging CR-like was `r round(mean_cr, 3)` (range = `r round(min_cr, 3)` - `r round(max_cr, 3)`).
+We then classified participants as aging CR-like (N = `r cr_pathway`/`r total_participants`) or BM-like (N = `r bm_pathway`/`r total_participants`) based on their distance to the corresponding CR or BM line (as depicted in Figure 1). The mean BM value for participants aging BM-like was  `r round(mean_bm, 3)` (range = `r round(min_bm, 3)` - `r round(max_bm, 3)`), and the mean CR value for participants aging CR-like was `r round(mean_cr, 3)` (range = `r round(min_cr, 3)` - `r round(max_cr, 3)`). In an interaction model, aging CR-like reduced the positive association between hippocampal annual change and memory annual change (β = `r round(cr_bm_hc_mem$coef, 3)`, _p_ = `r format_p_value(cr_bm_hc_mem$p_value)`, _p_<sub>FDR</sub> = `r format_p_value(p_value_df[p_value_df$model_name == "cr_bm_hc_mem", "adjusted_p_value"])`, r² = `r round(cr_bm_hc_mem$r2, 3)`).
 
 ```{r echo=FALSE, warning=FALSE}
 # Divide data into pathways
@@ -557,10 +575,10 @@ bm_path <- clean_data %>%
 
 # Plot the CR half
 cr_path_plot <- ggplot(cr_path, aes(pathway, reverse_cr, color = reverse_cr, fill = reverse_cr)) +
-  geom_quasirandom(size = 4) +
+  geom_quasirandom(size = 4, alpha = 0.7) +
   scale_color_gradientn(
     colors = c("#f5d7b0", "#f5be27", "#fa8d00", "#bc507f", "#7E1891", "#1c0159"),
-    limits = c(0.55, 2.59),
+    limits = c(0.5, 2.75),
     values = c(0, 1 / 3, 2 / 3, 1) # Values mapped to scale so both figures have the same scale
   ) +
   scale_fill_gradientn(
@@ -571,12 +589,12 @@ cr_path_plot <- ggplot(cr_path, aes(pathway, reverse_cr, color = reverse_cr, fil
   theme(
     axis.text.x = element_blank(), # Remove x-axis text
     legend.position = "top",
-    axis.title = element_text(size = 13),  # Increase font size
-    axis.text = element_text(size = 13),  
+    axis.title = element_text(size = 13), # Increase font size
+    axis.text = element_text(size = 13),
     plot.margin = margin(10, 10, 10, 10)
   ) +
   scale_y_continuous(
-    limits = c(0.5, 2.7), # Replace with your desired limits
+    limits = c(0.5, 2.75),
     expand = c(0, 0),
     position = "right" # Move y-axis to the right
   ) +
@@ -589,10 +607,10 @@ cr_path_plot <- ggplot(cr_path, aes(pathway, reverse_cr, color = reverse_cr, fil
 
 # Plot the BM half
 bm_path_plot <- ggplot(bm_path, aes(pathway, reverse_bm, color = reverse_bm, fill = reverse_bm)) +
-  geom_quasirandom(size = 4) +
+  geom_quasirandom(size = 4, alpha = 0.7) +
   scale_color_gradientn(
     colors = c("#E5E483", "#8ac926", "#4CCD99", "#5BBCFF", "#024CAA", "#00224D"),
-    limits = c(0.55, 2.59),
+    limits = c(0.45, 2.85),
     values = c(0, 1 / 3, 2 / 3, 1) # Values mapped to scale so both figures have the same scale
   ) +
   scale_fill_gradientn(
@@ -601,7 +619,7 @@ bm_path_plot <- ggplot(bm_path, aes(pathway, reverse_bm, color = reverse_bm, fil
   ) +
   theme_minimal() +
   scale_y_continuous(
-    limits = c(0.5, 2.7),
+    limits = c(0.45, 2.85),
     expand = c(0, 0)
   ) +
   labs(
@@ -610,10 +628,10 @@ bm_path_plot <- ggplot(bm_path, aes(pathway, reverse_bm, color = reverse_bm, fil
     color = "Brain Maintenance"
   ) +
   theme(
-    axis.text.x = element_blank(),  # Remove x-axis text
+    axis.text.x = element_blank(), # Remove x-axis text
     legend.position = "top",
-    axis.title = element_text(size = 13),  # Increase font size
-    axis.text = element_text(size = 13) 
+    axis.title = element_text(size = 13), # Increase font size
+    axis.text = element_text(size = 13)
   ) +
   guides(color = "none", fill = guide_colorbar(title = "Brain Maintenance"))
 
@@ -807,7 +825,7 @@ palette <- c("High CR" = "#7E1891", "Low CR" = "#f5be27")
 # Create the plot
 cr_age_plot <- ggplot() +
   geom_line(data = long_data_vis_cr, aes(x = age, y = memory, group = id), color = "lightgray", alpha = 0.5) + # Plot individual trajectories
-  geom_point(data = long_data_vis_cr, aes(x = age, y = memory), color = "gray", size = 1) + # Add scatter points
+  geom_point(data = long_data_vis_cr, aes(x = age, y = memory), color = "gray", size = 1, alpha = 0.8) + # Add scatter points
   geom_ribbon(data = predictions, aes(x = age, ymin = lower_bound, ymax = upper_bound, fill = as.factor(reverse_cr_group)), alpha = 0.3) + # Add CIs
   geom_line(data = predictions, aes(x = age, y = predicted, color = as.factor(reverse_cr_group)), size = 1.2) + # Plot predicted lines for each group
   scale_color_manual(values = palette) +
@@ -846,7 +864,7 @@ palette <- c("High BM" = "#1f77b4", "Low BM" = "#8ac926")
 # Create the plot
 bm_age_plot <- ggplot() +
   geom_line(data = long_data_vis_bm, aes(x = age, y = memory, group = id), color = "lightgray", alpha = 0.5) + # Plot individual trajectories
-  geom_point(data = long_data_vis_bm, aes(x = age, y = memory), color = "gray", size = 1) + # Add scatter points
+  geom_point(data = long_data_vis_bm, aes(x = age, y = memory), color = "gray", size = 1, alpha = 0.8) + # Add scatter points
   geom_ribbon(data = predictions, aes(x = age, ymin = lower_bound, ymax = upper_bound, fill = as.factor(reverse_bm_group)), alpha = 0.3) + # Add CIs
   geom_line(data = predictions, aes(x = age, y = predicted, color = as.factor(reverse_bm_group)), size = 1.2) + # Plot predicted lines for each group
   scale_color_manual(values = palette) +
@@ -1071,51 +1089,89 @@ With CR, there was no evidence of a significant association between CR and DMN (
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 # Divide the continuous variable into groups to be able to better visualize the data
 clean_data$reverse_cr_group <- cut(clean_data$reverse_cr,
-  breaks = quantile(clean_data$reverse_cr, probs = seq(0, 1, (1 / 2)), na.rm = TRUE),
+  breaks = quantile(clean_data$reverse_cr, probs = seq(0, 1, (1 / 3)), na.rm = TRUE),
   include.lowest = TRUE,
-  labels = c("Low CR", "High CR")
+  labels = c("Low CR", "Mid CR", "High CR")
 )
 
-# 1) Fit a model for sn_slopes, controlling for study and grouping by reverse_cr_group
-fit_sn <- lm(memory_slopes ~ sn_slopes * reverse_cr_group + study,
-             data = clean_data)
+## 1) Fit two separate SN models (Low CR and High CR)
+fit_sn_low <- lm(memory_slopes ~ sn_slopes + study,
+  data = subset(clean_data, reverse_cr_group == "Low CR")
+)
+fit_sn_mid <- lm(memory_slopes ~ sn_slopes + study,
+  data = subset(clean_data, reverse_cr_group == "Mid CR")
+)
+fit_sn_high <- lm(memory_slopes ~ sn_slopes + study,
+  data = subset(clean_data, reverse_cr_group == "High CR")
+)
 
-# 2) Use ggpredict() to get the partial‐effect data
-#    "reverse_cr_group" is used as a by‐variable to get separate lines
-pred_sn <- ggpredict(fit_sn, terms = c("sn_slopes[all]", "reverse_cr_group"))
+## 2) Create reference grids for each model
+rg_sn_low <- ref_grid(fit_sn_low,
+  at = list(sn_slopes = seq(-0.1, 0.15, by = 0.01))
+)
+rg_sn_mid <- ref_grid(fit_sn_mid,
+  at = list(sn_slopes = seq(-0.1, 0.15, by = 0.01))
+)
+rg_sn_high <- ref_grid(fit_sn_high,
+  at = list(sn_slopes = seq(-0.1, 0.15, by = 0.01))
+)
 
-# 3) Plot memory_slopes plus the partial‐effect lines
+## 3) Get the predicted means for each grid
+em_sn_low <- emmeans(rg_sn_low, "sn_slopes") # partial effect for fit_sn_low
+em_sn_mid <- emmeans(rg_sn_mid, "sn_slopes")
+em_sn_high <- emmeans(rg_sn_high, "sn_slopes")
+
+## Convert to data frames for ggplot
+df_sn_low <- as.data.frame(em_sn_low)
+df_sn_mid <- as.data.frame(em_sn_mid)
+df_sn_high <- as.data.frame(em_sn_high)
+
+df_sn_low$reverse_cr_group <- "Low CR"
+df_sn_mid$reverse_cr_group <- "Mid CR"
+df_sn_high$reverse_cr_group <- "High CR"
+
+## 4) Plot each line and CI ribbon
 sn_int <- ggplot() +
-  # Raw data, colored by group
   geom_point(
     data = clean_data,
-    aes(
-      x = sn_slopes, 
-      y = memory_slopes, 
-      color = reverse_cr_group
-    ),
-    alpha = 0.6
+    aes(x = sn_slopes, y = memory_slopes, color = reverse_cr_group),
+    alpha = 0.5
   ) +
-  # Confidence‐band ribbon
+  scale_color_manual(
+    values = c("High CR" = "#493D9E", "Low CR" = "#F0A04B", "Mid CR" = "lightgrey")
+  ) +
+  geom_line(
+    data = df_sn_low,
+    aes(x = sn_slopes, y = emmean, color = reverse_cr_group),
+    size = 1.1
+  ) +
+  geom_line(
+    data = df_sn_mid,
+    aes(x = sn_slopes, y = emmean, color = reverse_cr_group),
+    size = 1.1
+  ) +
   geom_ribbon(
-    data = pred_sn,
-    aes(
-      x = x, 
-      ymin = conf.low, 
-      ymax = conf.high, 
-      fill = group
-    ),
+    data = df_sn_high,
+    aes(x = sn_slopes, ymin = lower.CL, ymax = upper.CL),
+    fill = "#B2A5FF", # This “hard‐codes” a color instead of mapping
     alpha = 0.3
   ) +
-  # Fitted lines
   geom_line(
-    data = pred_sn,
-    aes(
-      x = x,
-      y = predicted,
-      color = group
-    ),
+    data = df_sn_high,
+    aes(x = sn_slopes, y = emmean, color = reverse_cr_group),
     size = 1.1
+  ) +
+  geom_ribbon(
+    data = df_sn_low,
+    aes(x = sn_slopes, ymin = lower.CL, ymax = upper.CL),
+    fill = "#FADA7A",
+    alpha = 0.3
+  ) +
+  geom_ribbon(
+    data = df_sn_mid,
+    aes(x = sn_slopes, ymin = lower.CL, ymax = upper.CL),
+    fill = "lightgrey",
+    alpha = 0.3
   ) +
   labs(
     y = "Memory Annual Change",
@@ -1130,40 +1186,84 @@ sn_int <- ggplot() +
     plot.title = element_text(hjust = 0.5)
   )
 
-# 4) Repeat the same steps for ec_slopes:
-fit_ec <- lm(memory_slopes ~ ec_slopes * reverse_cr_group + study,
-             data = clean_data)
+## 1) Fit two separate EC models (Low CR and High CR)
+fit_ec_low <- lm(memory_slopes ~ ec_slopes + study,
+  data = subset(clean_data, reverse_cr_group == "Low CR")
+)
+fit_ec_mid <- lm(memory_slopes ~ ec_slopes + study,
+  data = subset(clean_data, reverse_cr_group == "Mid CR")
+)
+fit_ec_high <- lm(memory_slopes ~ ec_slopes + study,
+  data = subset(clean_data, reverse_cr_group == "High CR")
+)
 
-pred_ec <- ggpredict(fit_ec, terms = c("ec_slopes[all]", "reverse_cr_group"))
+## 2) Create reference grids for each model
+rg_ec_low <- ref_grid(fit_ec_low,
+  at = list(ec_slopes = seq(-0.1, 0.15, by = 0.01))
+)
+rg_ec_mid <- ref_grid(fit_ec_mid,
+  at = list(ec_slopes = seq(-0.1, 0.15, by = 0.01))
+)
+rg_ec_high <- ref_grid(fit_ec_high,
+  at = list(ec_slopes = seq(-0.1, 0.15, by = 0.01))
+)
 
+## 3) Get the predicted means for each grid
+em_ec_low <- emmeans(rg_ec_low, "ec_slopes") # partial effect for fit_ec_low
+em_ec_mid <- emmeans(rg_ec_mid, "ec_slopes")
+em_ec_high <- emmeans(rg_ec_high, "ec_slopes")
+
+## Convert to data frames for ggplot
+df_ec_low <- as.data.frame(em_ec_low)
+df_ec_mid <- as.data.frame(em_ec_mid)
+df_ec_high <- as.data.frame(em_ec_high)
+
+df_ec_low$reverse_cr_group <- "Low CR"
+df_ec_mid$reverse_cr_group <- "Mid CR"
+df_ec_high$reverse_cr_group <- "High CR"
+
+## 4) Plot each line and CI ribbon
 ec_int <- ggplot() +
   geom_point(
     data = clean_data,
-    aes(
-      x = ec_slopes, 
-      y = memory_slopes, 
-      color = reverse_cr_group
-    ),
-    alpha = 0.6
+    aes(x = ec_slopes, y = memory_slopes, color = reverse_cr_group),
+    alpha = 0.5
   ) +
-  geom_ribbon(
-    data = pred_ec,
-    aes(
-      x = x,
-      ymin = conf.low,
-      ymax = conf.high,
-      fill = group
-    ),
-    alpha = 0.3
+  scale_color_manual(
+    values = c("High CR" = "#493D9E", "Low CR" = "#F0A04B", "Mid CR" = "lightgrey")
   ) +
   geom_line(
-    data = pred_ec,
-    aes(
-      x = x,
-      y = predicted,
-      color = group
-    ),
+    data = df_ec_low,
+    aes(x = ec_slopes, y = emmean, color = reverse_cr_group),
     size = 1.1
+  ) +
+  geom_line(
+    data = df_ec_mid,
+    aes(x = ec_slopes, y = emmean, color = reverse_cr_group),
+    size = 1.1
+  ) +
+  geom_line(
+    data = df_ec_high,
+    aes(x = ec_slopes, y = emmean, color = reverse_cr_group),
+    size = 1.1
+  ) +
+  geom_ribbon(
+    data = df_ec_low,
+    aes(x = ec_slopes, ymin = lower.CL, ymax = upper.CL),
+    fill = "#FADA7A",
+    alpha = 0.3
+  ) +
+  geom_ribbon(
+    data = df_ec_mid,
+    aes(x = ec_slopes, ymin = lower.CL, ymax = upper.CL),
+    fill = "lightgrey",
+    alpha = 0.3
+  ) +
+  geom_ribbon(
+    data = df_ec_high,
+    aes(x = ec_slopes, ymin = lower.CL, ymax = upper.CL),
+    fill = "#B2A5FF", # This “hard‐codes” a color instead of mapping
+    alpha = 0.3
   ) +
   labs(
     y = "Memory Annual Change",
@@ -1192,6 +1292,9 @@ combined_plot
 high_cr <- clean_data %>%
   filter(reverse_cr_group == "High CR")
 
+mid_cr <- clean_data %>%
+  filter(reverse_cr_group == "Mid CR")
+
 low_cr <- clean_data %>%
   filter(reverse_cr_group == "Low CR")
 
@@ -1210,17 +1313,23 @@ vars_unscale <- c(
 high_cr_sn <- get_regression_stats(scale(memory_slopes) ~ scale(sn_slopes) + study, data = high_cr, vars)
 high_cr_sn_unscaled <- get_regression_stats((memory_slopes) ~ sn_slopes + study, data = high_cr, vars_unscale)
 
+mid_cr_sn <- get_regression_stats(scale(memory_slopes) ~ scale(sn_slopes) + study, data = mid_cr, vars)
+mid_cr_sn_unscaled <- get_regression_stats((memory_slopes) ~ (sn_slopes) + study, data = mid_cr, vars_unscale)
+
 low_cr_sn <- get_regression_stats(scale(memory_slopes) ~ scale(sn_slopes) + study, data = low_cr, vars)
 low_cr_sn_unscaled <- get_regression_stats((memory_slopes) ~ (sn_slopes) + study, data = low_cr, vars_unscale)
 
 high_cr_ec <- get_regression_stats(scale(memory_slopes) ~ scale(ec_slopes) + study, data = high_cr, vars)
 high_cr_ec_unscaled <- get_regression_stats((memory_slopes) ~ (ec_slopes) + study, data = high_cr, vars_unscale)
 
+mid_cr_ec <- get_regression_stats(scale(memory_slopes) ~ scale(ec_slopes) + study, data = mid_cr, vars)
+mid_cr_ec_unscaled <- get_regression_stats((memory_slopes) ~ (ec_slopes) + study, data = mid_cr, vars_unscale)
+
 low_cr_ec <- get_regression_stats(scale(memory_slopes) ~ scale(ec_slopes) + study, data = low_cr, vars)
 low_cr_ec_unscaled <- get_regression_stats((memory_slopes) ~ (ec_slopes) + study, data = low_cr, vars_unscale)
 ```
 
-<small>(A) The association between anterior SN annual change and memory annual change, adjusted for cohort/MRI scanner, depicted divided into two groups: high CR (blue) and low CR (orange). There are linear models for each group with the high CR group displaying a coefficient of `r round(high_cr_sn_unscaled$coef, 3)` (scaled: `r round(high_cr_sn$coef, 3)`) and the low CR group displaying a coefficient of `r round(low_cr_sn_unscaled$coef, 3)` (scaled: `r round(low_cr_sn$coef, 3)`) and confidence intervals. (B) The association between ECN annual change and memory annual change, adjusted for cohort/MRI scanner, depicted divided into two groups with the high CR group displaying a coefficient of `r round(high_cr_ec_unscaled$coef, 3)` (scaled: `r round(high_cr_ec$coef, 3)`) and the low CR group displaying a coefficient of `r round(low_cr_ec_unscaled$coef, 3)` (scaled: `r round(low_cr_ec$coef, 3)`). Abbreviations: ECN Executive Control Network, SN Salience Network, CR Cognitive Reserve, BM Brain Maintenance</small>
+<small>(A) The association between anterior SN annual change and memory annual change, adjusted for cohort/MRI scanner, depicted divided into three groups: high CR (blue), mid CR (grey) and low CR (orange). There are linear models for each group with the high CR group displaying a coefficient of `r round(high_cr_sn_unscaled$coef, 3)` (scaled: `r round(high_cr_sn$coef, 3)`), the mid CR group displaying a coefficient of `r round(mid_cr_sn_unscaled$coef, 3)` (scaled: `r round(mid_cr_sn$coef, 3)`), and the low CR group displaying a coefficient of `r round(low_cr_sn_unscaled$coef, 3)` (scaled: `r round(low_cr_sn$coef, 3)`) and confidence intervals. (B) The association between ECN annual change and memory annual change, adjusted for cohort/MRI scanner, depicted divided into the three groups with the high CR group displaying a coefficient of `r round(high_cr_ec_unscaled$coef, 3)` (scaled: `r round(high_cr_ec$coef, 3)`), the mid CR group displaying a coefficient of `r round(mid_cr_ec_unscaled$coef, 3)` (scaled: `r round(mid_cr_ec$coef, 3)`), and the low CR group displaying a coefficient of `r round(low_cr_ec_unscaled$coef, 3)` (scaled: `r round(low_cr_ec$coef, 3)`). Abbreviations: ECN Executive Control Network, SN Salience Network, CR Cognitive Reserve, BM Brain Maintenance</small>
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 # Create the table
@@ -1495,8 +1604,8 @@ color_palette <- c("indianred2", "steelblue2", "#86db49", "#F7CA18", "blue", "bl
 
 # Create the plot age v memory
 mem_age <- ggplot(long_clean_data, aes(x = age, y = memory, color = Study, group = id)) +
-  geom_line(size = 0.4) +
-  geom_point(size = 0.6) +
+  geom_line(size = 0.4, alpha = 0.5) +
+  geom_point(size = 0.6, alpha = 0.5) +
   scale_color_manual(values = color_palette) +
   geom_smooth(method = "gam", formula = y ~ s(x, k = 24, bs = "cs"), aes(group = 1), color = "grey", se = TRUE) +
   labs(x = "Age", y = "Episodic Memory", color = "Cohort") +
@@ -1505,8 +1614,8 @@ mem_age <- ggplot(long_clean_data, aes(x = age, y = memory, color = Study, group
 
 # Create the plot age v HC
 hc_age <- ggplot(long_clean_data, aes(x = age, y = adj_HIP_total, color = Study, group = id)) +
-  geom_line(size = 0.4) +
-  geom_point(size = 0.6) +
+  geom_line(size = 0.4, alpha = 0.5) +
+  geom_point(size = 0.6, alpha = 0.5) +
   scale_color_manual(values = color_palette) +
   geom_smooth(method = "gam", formula = y ~ s(x, k = 24, bs = "cs"), aes(group = 1), color = "grey", se = TRUE) +
   labs(x = "Age", y = "Adjusted Hippocampal Volume", color = "Cohort") +
@@ -1716,29 +1825,49 @@ memory_hippocampus_edu_models <- list(
 )
 
 # Education and CR/BM Analyses
-education_models <- list(
-  edu_cr, edu_bm, edu_cr_int, edu_bm_int
+education_cr_models <- list(
+  edu_cr,
+  edu_cr_int
+)
+education_bm_models <- list(
+  edu_bm,
+  edu_bm_int
 )
 
 # CR and BM Sensitivity Analyses
-cr_bm_models <- list(
-  cr_validation, bm_age_lme, cr_age_lme
+cr_sensitivity_models <- list(
+  cr_validation,
+  cr_bm_hc_mem,
+  cr_bm_mem,
+  bm_cr_mem
 )
 
+# CR / BM and Age
+cr_bm_age_models <- list(
+  bm_age_lme, cr_age_lme
+)
 # Functional Connectivity and CR/BM Analyses Longitudinal
-functional_connectivity_long <- list(
-  bm_dmn_stats, bm_dmn, bm_ecn_stats, bm_ec, bm_sn_stats, bm_sn,
-  cr_dmn_stats, cr_dmn, cr_ecn_stats, cr_ec, cr_sn_stats, cr_sn
+fc_long_cr <- list(
+  cr_dmn_stats, cr_dmn,
+  cr_ecn_stats, cr_ec,
+  cr_sn_stats,  cr_sn
+)
+fc_long_bm <- list(
+  bm_dmn_stats, bm_dmn,
+  bm_ecn_stats, bm_ec,
+  bm_sn_stats,  bm_sn
 )
 
 # Functional Connectivity and CR/BM Analyses Cross-sectional
-functional_connectivity_cs <- list(
+fc_cs_cr <- list(
   cr_dmn_bl, cr_dmn_fu, cr_dmn_stats_bl, cr_dmn_stats_fu,
-  cr_ec_bl, cr_ec_fu, cr_ecn_stats_bl, cr_ecn_stats_fu,
-  cr_sn_bl, cr_sn_fu, cr_sn_stats_bl, cr_sn_stats_fu,
+  cr_ec_bl,  cr_ec_fu,  cr_ecn_stats_bl, cr_ecn_stats_fu,
+  cr_sn_bl,  cr_sn_fu,  cr_sn_stats_bl,  cr_sn_stats_fu
+)
+fc_cs_bm <- list(
   bm_dmn_bl, bm_dmn_fu, bm_dmn_stats_bl, bm_dmn_stats_fu,
-  bm_ec_bl, bm_ec_fu, bm_ecn_stats_bl, bm_ecn_stats_fu,
-  bm_sn_bl, bm_sn_fu, bm_sn_stats_bl, bm_sn_stats_fu
+  bm_ec_bl,  bm_ec_fu,  bm_ecn_stats_bl, bm_ecn_stats_fu,
+  bm_sn_bl,  bm_sn_fu,  bm_sn_stats_bl,  bm_sn_stats_fu
 )
 
 # Duplicate the GAMMs to get seperate p-values
@@ -1786,20 +1915,67 @@ adjust_p_values <- function(models, model_names) {
 }
 
 # Adjust p-values for each group
-memory_hippocampus_p_values <- adjust_p_values(memory_hippocampus_edu_models, c("emhp_merged", "model_baseline", "model_followup", "edu_baseline", "edu_followup", "edu_long"))
-education_p_values <- adjust_p_values(education_models, c("edu_cr", "edu_bm", "edu_cr_int", "edu_bm_int"))
-cr_bm_p_values <- adjust_p_values(cr_bm_models, c("cr_validation", "bm_age_lme", "cr_age_lme"))
-functional_connectivity_long_p_values <- adjust_p_values(functional_connectivity_long, c("bm_dmn_stats", "bm_dmn", "bm_ecn_stats", "bm_ec", "bm_sn_stats", "bm_sn", "cr_dmn_stats", "cr_dmn", "cr_ecn_stats", "cr_ec", "cr_sn_stats", "cr_sn"))
-functional_connectivity_cs_p_values <- adjust_p_values(functional_connectivity_cs, c("cr_dmn_bl", "cr_dmn_fu", "cr_dmn_stats_bl", "cr_dmn_stats_fu", "cr_ec_bl", "cr_ec_fu", "cr_ecn_stats_bl", "cr_ecn_stats_fu", "cr_sn_bl", "cr_sn_fu", "cr_sn_stats_bl", "cr_sn_stats_fu", "bm_dmn_bl", "bm_dmn_fu", "bm_dmn_stats_bl", "bm_dmn_stats_fu", "bm_ec_bl", "bm_ec_fu", "bm_ecn_stats_bl", "bm_ecn_stats_fu", "bm_sn_bl", "bm_sn_fu", "bm_sn_stats_bl", "bm_sn_stats_fu"))
-model_comp_general_p_values <- adjust_p_values(model_comp_general_models, c("gamm_memory_lft", "gamm_memory_gamm", "gamm_hc_lft", "gamm_hc_gamm", "hc_age_lme", "mem_age_lme"))
+memory_hippocampus_p_values <- adjust_p_values(
+  memory_hippocampus_edu_models,
+  c("emhp_merged", "model_baseline", "model_followup", "edu_baseline", "edu_followup", "edu_long")
+)
+education_bm_p_values <- adjust_p_values(
+  education_bm_models,
+  c("edu_bm", "edu_bm_int")
+)
+education_cr_p_values <- adjust_p_values(
+  education_cr_models,
+  c("edu_cr", "edu_cr_int")
+)
+cr_sensitivity_p_values <- adjust_p_values(
+  cr_sensitivity_models,
+  c("cr_validation", "cr_bm_hc_mem", "cr_bm_mem", "bm_cr_mem")
+)
+cr_bm_age_p_values <- adjust_p_values(
+  cr_bm_age_models,
+  c("bm_age_lme", "cr_age_lme")
+)
+fc_long_cr_p_values <- adjust_p_values(
+  fc_long_cr,
+  c("cr_dmn_stats", "cr_dmn", "cr_ecn_stats", "cr_ec", "cr_sn_stats", "cr_sn")
+)
+fc_long_bm_p_values <- adjust_p_values(
+  fc_long_bm,
+  c("bm_dmn_stats", "bm_dmn", "bm_ecn_stats", "bm_ec", "bm_sn_stats", "bm_sn")
+)
+fc_cs_cr_p_values <- adjust_p_values(
+  fc_cs_cr,
+  c(
+    "cr_dmn_bl", "cr_dmn_fu", "cr_dmn_stats_bl", "cr_dmn_stats_fu",
+    "cr_ec_bl", "cr_ec_fu", "cr_ecn_stats_bl", "cr_ecn_stats_fu",
+    "cr_sn_bl", "cr_sn_fu", "cr_sn_stats_bl", "cr_sn_stats_fu"
+  )
+)
+fc_cs_bm_p_values <- adjust_p_values(
+  fc_cs_bm,
+  c(
+    "bm_dmn_bl", "bm_dmn_fu", "bm_dmn_stats_bl", "bm_dmn_stats_fu",
+    "bm_ec_bl", "bm_ec_fu", "bm_ecn_stats_bl", "bm_ecn_stats_fu",
+    "bm_sn_bl", "bm_sn_fu", "bm_sn_stats_bl", "bm_sn_stats_fu"
+  )
+)
+model_comp_general_p_values <- adjust_p_values(
+  model_comp_general_models,
+  c("gamm_memory_lft", "gamm_memory_gamm", "gamm_hc_lft", "gamm_hc_gamm", "hc_age_lme", "mem_age_lme")
+)
 
 # Combine all results
 p_value_df <- rbind(
   memory_hippocampus_p_values,
-  education_p_values,
-  cr_bm_p_values,
-  functional_connectivity_long_p_values,
-  functional_connectivity_cs_p_values,
+  education_bm_p_values,
+  education_cr_p_values,
+  cr_sensitivity_p_values,
+  cr_bm_age_p_values,
+  fc_long_cr_p_values,
+  fc_long_bm_p_values,
+  # functional_connectivity_long_p_values,
+  fc_cs_cr_p_values,
+  fc_cs_bm_p_values,
   model_comp_general_p_values
 )
 

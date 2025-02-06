@@ -72,72 +72,28 @@ Fit residual models to be able to use in the figures throughout the results sect
 ```{r}
 # In order to be able to save these models, the NAs have to be removed so I made a df for each type to remove the data and then can merge back into clean_df
 
-# Remove NAs first
-fc_res_data <- clean_data %>%
-  filter(!(is.na(dmn_slopes)))
-
-hc_res_data <- clean_data %>%
-  filter(!(is.na(hc_slopes)))
-
-hc_bl_res_data <- clean_data %>%
-  filter(!is.na(hc_slopes) & !is.na(edu) & !is.na(sex))
-
+# Create a memory-residual df
 mem_res_data <- clean_data %>%
-  filter(!(is.na(memory_slopes)))
+  drop_na(memory_slopes) %>%
+  mutate(
+    res_mem_slopes_age = residuals(
+      lm(memory_slopes ~ age_followup, data = .)
+    )
+  ) %>%
+  select(id, res_mem_slopes_age)
 
-mem_bl_res_data <- clean_data %>%
-  filter(!is.na(memory_slopes) & !is.na(edu) & !is.na(sex))
+# Create a hippocampus-residual df
+hc_res_data <- clean_data %>%
+  drop_na(hc_slopes) %>%
+  mutate(
+    res_hc_slopes_age = residuals(
+      lm(hc_slopes ~ age_followup, data = .)
+    )
+  ) %>%
+  select(id, res_hc_slopes_age)
 
-# Fit a linear model including cohort as a covariate
-residual_model_dmn <- lm(dmn_slopes ~ study, data = fc_res_data)
-residual_model_ec <- lm(ec_slopes ~ study, data = fc_res_data)
-residual_model_sn <- lm(sn_slopes ~ study, data = fc_res_data)
-residual_model_mem <- lm(memory_slopes ~ study, data = mem_res_data)
-residual_model_bl_mem <- lm(memory_baseline ~ study, data = mem_bl_res_data)
-residual_model_fu_mem <- lm(memory_followup ~ study, data = mem_bl_res_data)
-residual_model_hc <- lm(hc_slopes ~ study, data = hc_res_data)
-residual_model_bl_hc <- lm(adj_HIP_total_baseline ~ study, data = hc_bl_res_data)
-residual_model_fu_hc <- lm(adj_HIP_total_followup ~ study, data = hc_bl_res_data)
-residual_model_bl_dmn <- lm(dmn_baseline ~ study, data = fc_res_data)
-residual_model_fu_dmn <- lm(dmn_followup ~ study, data = fc_res_data)
-residual_model_fu_dmn <- lm(dmn_followup ~ study, data = fc_res_data)
-residual_model_edu <- lm(edu ~ study, data = hc_bl_res_data)
-
-
-# Extract residuals
-fc_res_data$res_dmn_slopes <- residuals(residual_model_dmn)
-fc_res_data$res_ec_slopes <- residuals(residual_model_ec)
-fc_res_data$res_sn_slopes <- residuals(residual_model_sn)
-mem_res_data$res_mem_slopes <- residuals(residual_model_mem)
-mem_bl_res_data$res_mem_bl <- residuals(residual_model_bl_mem)
-mem_bl_res_data$res_mem_fu <- residuals(residual_model_fu_mem)
-hc_res_data$res_hc_slopes <- residuals(residual_model_hc)
-hc_bl_res_data$res_hc_bl <- residuals(residual_model_bl_hc)
-hc_bl_res_data$res_hc_fu <- residuals(residual_model_fu_hc)
-fc_res_data$res_dmn_bl <- residuals(residual_model_bl_dmn)
-fc_res_data$res_dmn_fu <- residuals(residual_model_fu_dmn)
-hc_bl_res_data$res_edu <- residuals(residual_model_edu)
-
-# Filter dfs to put back in
-fc_res_data <- fc_res_data %>%
-  select(id, res_dmn_slopes, res_sn_slopes, res_ec_slopes, res_dmn_bl, res_dmn_fu)
-
-hc_res_data <- hc_res_data %>%
-  select(id, res_hc_slopes)
-
-mem_bl_res_data <- mem_bl_res_data %>%
-  select(id, res_mem_bl, res_mem_fu)
-
-mem_res_data <- mem_res_data %>%
-  select(id, res_mem_slopes)
-
-hc_bl_res_data <- hc_bl_res_data %>%
-  select(id, res_hc_bl, res_hc_fu, res_edu)
-
-emhc_data <- merge(fc_res_data, hc_res_data, by = c("id"), all = TRUE)
-emhc_data <- merge(emhc_data, mem_res_data, by = c("id"), all = TRUE)
-emhc_data <- merge(emhc_data, hc_bl_res_data, by = c("id"), all = TRUE)
-emhc_data <- merge(emhc_data, mem_bl_res_data, by = c("id"), all = TRUE)
+# Merge the two residual columns back together by id
+emhc_data <- merge(mem_res_data, hc_res_data, by = c("id"), all = TRUE)
 emhc_data <- merge(clean_data, emhc_data, by = c("id"), all = TRUE)
 ```
 
@@ -147,14 +103,14 @@ Using the new formula to calculate a BM continuous variable
 emhc_data <- emhc_data %>%
   mutate(
     res_hc_slopes_scaled =
-      res_hc_slopes / max(
-        abs(min(res_hc_slopes, na.rm = TRUE)),
-        abs(max(res_hc_slopes, na.rm = TRUE))
+      res_hc_slopes_age / max(
+        abs(min(res_hc_slopes_age, na.rm = TRUE)),
+        abs(max(res_hc_slopes_age, na.rm = TRUE))
       ),
     res_mem_slopes_scaled =
-      res_mem_slopes / max(
-        abs(min(res_mem_slopes, na.rm = TRUE)),
-        abs(max(res_mem_slopes, na.rm = TRUE))
+      res_mem_slopes_age / max(
+        abs(min(res_mem_slopes_age, na.rm = TRUE)),
+        abs(max(res_mem_slopes_age, na.rm = TRUE))
       )
   )
 

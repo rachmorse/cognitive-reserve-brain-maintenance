@@ -187,18 +187,38 @@ data <- data %>%
 
 With your standard variable names and required calculations complete, you can run the rest of this code without needed to make any more modifications. 
 
+This block of code calculated the residuals of a regression between memory change and baseline age and another between hippocampal change and baseline age to be used in the calculation of the brain maintenance and cognitive reserve variables.
+
+```{r}
+# Remove NAs 
+data <- data %>%
+  drop_na(hippocampus_slopes, memory_slopes)
+
+# Fit linear models with age at baseline as a covariate
+mod_memory <- lm(memory_slopes ~ age_1, data = data)
+mod_hippocampus <- lm(hippocampus_slopes ~ age_1, data = data)
+
+# Attach residuals to the data frame
+data <- data %>%
+  mutate(
+    residuals_memory_age = resid(mod_memory),
+    residuals_hippocampus_age = resid(mod_hippocampus)
+  )
+```
+```
+
 This creates a scaled version of the hippocampus and memory annual change variables.
 
 ```{r}
 data <- data %>%
   mutate(
-    hippocampus_slopes_scaled = hippocampus_slopes / max(
-      abs(min(hippocampus_slopes, na.rm = TRUE)),
-      abs(max(hippocampus_slopes, na.rm = TRUE))
+    hippocampus_slopes_scaled = residuals_hippocampus_age / max(
+      abs(min(residuals_hippocampus_age, na.rm = TRUE)),
+      abs(max(residuals_hippocampus_age, na.rm = TRUE))
     ),
-    memory_slopes_scaled = memory_slopes / max(
-      abs(min(memory_slopes, na.rm = TRUE)),
-      abs(max(memory_slopes, na.rm = TRUE))
+    memory_slopes_scaled = residuals_memory_age / max(
+      abs(min(residuals_memory_age, na.rm = TRUE)),
+      abs(max(residuals_memory_age, na.rm = TRUE))
     )
   )
 ```
