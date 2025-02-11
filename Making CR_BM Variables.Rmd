@@ -194,17 +194,27 @@ This block of code calculated the residuals of a regression between memory chang
 data <- data %>%
   drop_na(hippocampus_slopes, memory_slopes)
 
-# Fit linear models with age at baseline as a covariate
-mod_memory <- lm(memory_slopes ~ age_1, data = data)
-mod_hippocampus <- lm(hippocampus_slopes ~ age_1, data = data)
+# Identify the follow-up age column 
+age_cols <- grep("^age_\\d+$", names(data), value = TRUE)
 
-# Attach residuals to the data frame
+# For each row, pick the maximum age among those columns
+data <- data %>%
+  rowwise() %>%
+  mutate(
+    age_followup = max(c_across(all_of(age_cols)), na.rm = TRUE)
+  ) %>%
+  ungroup()
+
+# Now use age_followup to generate the residuals
+mod_memory <- lm(memory_slopes ~ age_followup, data = data)
+mod_hippocampus <- lm(hippocampus_slopes ~ age_followup, data = data)
+
+# Attach residuals back to the data frame
 data <- data %>%
   mutate(
     residuals_memory_age = resid(mod_memory),
     residuals_hippocampus_age = resid(mod_hippocampus)
   )
-```
 ```
 
 This creates a scaled version of the hippocampus and memory annual change variables.
