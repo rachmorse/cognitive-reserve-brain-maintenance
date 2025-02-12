@@ -14,8 +14,8 @@ This section includes several scripts used to conduct this study:
 
 - `01_Data Cleaning.Rmd`: Cleans and merges data from the Lifebrain cohorts, removes outliers.
 - `02_Calculating Annual Change.Rmd`: Calculates adjusted hippocampal volume, average functional connectivity, and annual change variables.
-- `03_Descriptive Stats_CRBM Variables.Rmd`: Visualizes and conducts descriptive statistics for study variables and creates the CR/BM and index variables.
-- `04_Analysis and Results.Rmd`: Contains all primary analyses and supplemental analyses from the study.
+- `03_Descriptive Stats_CRBM Variables.Rmd`: Visualizes and conducts descriptive statistics for study variables and creates the CR/BM variables.
+- `04_Analysis and Results.Rmd`: Contains all primary and supplementary analyses from the study.
 - `05_Neuroimaging Figures.ipynb`: Generates neuroimaging figures of the hippocampus and relevant functional networks.
 
 ## Usage
