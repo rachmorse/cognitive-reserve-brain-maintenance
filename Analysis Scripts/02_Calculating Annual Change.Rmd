@@ -12,25 +12,9 @@ if (!require("dplyr")) {
   install.packages("dplyr")
   require("dplyr")
 }
-if (!require("stringr")) {
-  install.packages("stringr")
-  require("stringr")
-}
 if (!require("tidyr")) {
   install.packages("tidyr")
   require("tidyr")
-}
-if (!require("patchwork")) {
-  install.packages("patchwork")
-  require("patchwork")
-}
-if (!require("readr")) {
-  install.packages("readr")
-  require("readr")
-}
-if (!require("readxl")) {
-  install.packages("readxl")
-  require("readxl")
 }
 ```
 

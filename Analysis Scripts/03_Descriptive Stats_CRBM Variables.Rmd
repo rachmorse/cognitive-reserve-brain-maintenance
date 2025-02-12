@@ -16,28 +16,10 @@ if (!require("psych")) {
   install.packages("psych")
   require("psych")
 }
-if (!require("stringr")) {
-  install.packages("stringr")
-  require("stringr")
-}
 if (!require("tidyr")) {
   install.packages("tidyr")
   require("tidyr")
 }
-if (!require("scales")) {
-  install.packages("scales")
-  require("scales")
-}
-if (!require("mgcv")) {
-  install.packages("mgcv")
-  require("mgcv")
-}
-if (!require("ggsignif")) {
-  install.packages("ggsignif")
-  require("ggsignif")
-}
-
-library(readr)
 ```
 
 Start by reading in the clean data in wide format 

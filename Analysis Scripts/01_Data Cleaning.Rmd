@@ -5,10 +5,6 @@ date: "2024-04-04"
 ---
 
 ```{r setup, include=FALSE}
-if (!require("ggplot2")) {
-  install.packages("ggplot2")
-  require("ggplot2")
-}
 if (!require("dplyr")) {
   install.packages("dplyr")
   require("dplyr")

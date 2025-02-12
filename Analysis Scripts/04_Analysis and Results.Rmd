@@ -883,15 +883,15 @@ combined_lme
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 # Get the slopes for BM
 slopes_bm <- emtrends(
-  model_res_lme_bm, 
-  specs = ~ reverse_bm_group, 
+  model_res_lme_bm,
+  specs = ~reverse_bm_group,
   var   = "age"
 )
 
 # And for CR
 slopes_cr <- emtrends(
-  model_res_lme_cr, 
-  specs = ~ reverse_cr_group, 
+  model_res_lme_cr,
+  specs = ~reverse_cr_group,
   var   = "age"
 )
 
@@ -903,11 +903,11 @@ slopes_cr_summary <- summary(slopes_cr, infer = TRUE)
 slopes_bm_df <- as.data.frame(slopes_bm_summary)
 slopes_cr_df <- as.data.frame(slopes_cr_summary)
 
-# Then extract the slope 
-high_bm_age_unscaled   <- slopes_bm_df[slopes_bm_df$reverse_bm_group == "High BM", "age.trend"]
-low_bm_age_unscaled   <- slopes_bm_df[slopes_bm_df$reverse_bm_group == "Low BM", "age.trend"]
-high_cr_age_unscaled   <- slopes_cr_df[slopes_cr_df$reverse_cr_group == "High CR", "age.trend"]
-low_cr_age_unscaled   <- slopes_cr_df[slopes_cr_df$reverse_cr_group == "Low CR", "age.trend"]
+# Then extract the slope
+high_bm_age_unscaled <- slopes_bm_df[slopes_bm_df$reverse_bm_group == "High BM", "age.trend"]
+low_bm_age_unscaled <- slopes_bm_df[slopes_bm_df$reverse_bm_group == "Low BM", "age.trend"]
+high_cr_age_unscaled <- slopes_cr_df[slopes_cr_df$reverse_cr_group == "High CR", "age.trend"]
+low_cr_age_unscaled <- slopes_cr_df[slopes_cr_df$reverse_cr_group == "Low CR", "age.trend"]
 ```
 <small>(A) The association between memory and age, among participants aging BM-like, depicted divided into two groups: high BM (blue) representing participants above the mean and low BM (green) representing participants below the mean. There are linear mixed effects models, controlled for all covariates, for each group with the high BM group displaying a coefficient of `r round(high_bm_age_unscaled, 3)` and the low BM group displaying a coefficient of `r round(low_bm_age_unscaled, 3)` and confidence intervals. (B) The association between memory and age, among participants aging CR-like, depicted divided into high CR (purple) and low CR (orange) with the high CR group displaying a coefficient of `r round(high_cr_age_unscaled, 3)` and the low CR group displaying a coefficient of `r round(low_cr_age_unscaled, 3)` and confidence intervals.</small>
 
