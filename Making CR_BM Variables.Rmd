@@ -20,21 +20,9 @@ To recreate these variables using episodic memory and hippocampal volume, follow
 - Participant ages
 
 ```{r setup, include=FALSE}
-if (!require("ggplot2")) {
-  install.packages("ggplot2")
-  require("ggplot2")
-}
 if (!require("dplyr")) {
   install.packages("dplyr")
   require("dplyr")
-}
-if (!require("patchwork")) {
-  install.packages("patchwork")
-  require("patchwork")
-}
-if (!require("readr")) {
-  install.packages("readr")
-  require("readr")
 }
 ```
 
@@ -74,7 +62,7 @@ data <- data %>%
   )
 
 # Optionally, uncomment to filter to only include the needed variables for this analysis
-# data <- data %>% select(id, age, timepoint, hippocampus_volume, starts_with("memory_var_")) # Match `memory_vars`
+# data <- data %>% select(id, age, timepoint, hippocampus_volume, all_of(memory_vars))
 
 # Main processing function
 process_data <- function(data, n_timepoints, mem_vars) {
@@ -189,12 +177,12 @@ With your standard variable names and required calculations complete, you can ru
 
 This block of code calculated the residuals of a regression between memory change and baseline age and another between hippocampal change and baseline age to be used in the calculation of the brain maintenance and cognitive reserve variables.
 
-```{r}
-# Remove NAs 
+```{r residuals}
+# Remove NAs
 data <- data %>%
   drop_na(hippocampus_slopes, memory_slopes)
 
-# Identify the follow-up age column 
+# Identify the follow-up age column
 age_cols <- grep("^age_\\d+$", names(data), value = TRUE)
 
 # For each row, pick the maximum age among those columns
@@ -219,7 +207,7 @@ data <- data %>%
 
 This creates a scaled version of the hippocampus and memory annual change variables.
 
-```{r}
+```{r scaling}
 data <- data %>%
   mutate(
     hippocampus_slopes_scaled = residuals_hippocampus_age / max(
@@ -235,7 +223,7 @@ data <- data %>%
 
 Then this creates the brain maintenance (BM) variable.
 
-```{r}
+```{r brain maintenance}
 # Define a function to calculate the distance from a given data point to the point (1,1)
 distance_to_bm_point <- function(y, x) {
   # Calculate the shortest distance from the data point to (1,1)
@@ -267,7 +255,7 @@ data <- data %>%
 
 Next, this creates the cognitive reserve (CR) variable.
 
-```{r}
+```{r cognitive reserve}
 # Define a function to calculate the distance from the data point to the point (1,1)
 distance_to_cr_point <- function(y, x) {
   # Calculate the shortest distance from the data point to (1,1)
@@ -299,7 +287,7 @@ data <- data %>%
 
 Lastly, this calculates whether someone is aging more brain maintenance or cognitive reserve-like.
 
-```{r}
+```{r pathway}
 # Classify as on the BM or CR aging pathway
 data <- data %>%
   mutate(
