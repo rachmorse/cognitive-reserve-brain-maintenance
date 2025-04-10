@@ -496,7 +496,7 @@ total_participants <- nrow(clean_data)
 
 # Run analyses for validating the CR variable as a measure of CR
 cr_var <- c(
-  "scale(reverse_cr)"
+  "scale(hc_slopes):scale(reverse_cr)"
 )
 
 bm_var <- c(
@@ -508,12 +508,12 @@ int_var <- c(
 )
 
 # Running sensitivity analyses
-cr_validation <- get_regression_stats(scale(memory_slopes) ~ scale(hc_slopes) + scale(reverse_cr) + study + scale(age_baseline) + scale(mem_time) + sex + scale(edu), data = clean_data, cr_var)
+cr_validation <- get_regression_stats(scale(memory_slopes) ~ scale(hc_slopes) * scale(reverse_cr) + study + scale(age_baseline) + scale(mem_time) + sex + scale(edu), data = clean_data, cr_var)
 ```
 
 __**Analyzing Cognitive Reserve and Brain Maintenance Variables:**__
 
-We established CR and BM variables as illustrated in Figure 3, which plots each participant’s hippocampal and memory annual change—both adjusted for follow-up age—together with their corresponding CR or BM value. Because these trajectories are adjusted for age, individuals whose hippocampus atrophies and memory declines less than expected for their age appear to show increases in both hippocampal volume and memory. Adjusting for age ensures that the CR and BM variables consider the faster rate of decline in hippocampal volume and memory among observed among our older participants (Supplementary Figure 1). In a model with hippocampal annual change included, we found that CR remained a  significant predictor of memory annual change (β = `r round(cr_validation$coef, 3)`, _p_ = `r format_p_value(cr_validation$p_value)`, _p_<sub>FDR</sub> = `r format_p_value(p_value_df[p_value_df$model_name == "cr_validation", "adjusted_p_value"])`, r² = `r round(cr_validation$r2, 3)`). 
+We established CR and BM variables as illustrated in Figure 3, which plots each participant’s hippocampal and memory annual change—both adjusted for follow-up age—together with their corresponding CR or BM value. Because these trajectories are adjusted for age, individuals whose hippocampus atrophies and memory declines less than expected for their age appear to show increases in both hippocampal volume and memory. This adjustment for age allows the CR and BM variables to consider the faster rate of decline in hippocampal volume and memory observed among our older participants (Supplementary Figure 1). We found a significant interaction between hippocampal annual change and CR (β = `r round(cr_validation$coef, 3)`, _p_ = `r format_p_value(cr_validation$p_value)`, _p_<sub>FDR</sub> = `r format_p_value(p_value_df[p_value_df$model_name == "cr_validation", "adjusted_p_value"])`, r² = `r round(cr_validation$r2, 3)`) regressed on memory annual change. 
 
 ```{r echo=FALSE, warning=FALSE}
 custom_colors_bm <- c("#E5E483", "#8ac926", "#4CCD99", "#5BBCFF", "#024CAA", "#00224D")
@@ -582,7 +582,7 @@ combined_crbm
 ```
 <small>A) The association between hippocampus and memory annual change, adjusted for follow-up age, depicted with a diagonal line representing the BM line. The color code represents the BM value for a given participant. B) The same association between hippocampus and memory annual change, adjusted for follow-up age, this time depicted with a diagonal line representing the CR line. The color code represents the CR value for a given participant.</small>
 
-We then classified participants as aging CR-like (N = `r cr_pathway`/`r total_participants`) or BM-like (N = `r bm_pathway`/`r total_participants`) based on how closely their hippocampal and memory annual change resembled CR or BM aging patterns (see Methods). Figure 4 shows a distinction of each individual as aging either CR-like or BM-like, and the color code shows their corresponding CR or BM value, with higher values indicating greater memory improvement for their age. The mean BM value for participants aging BM-like was  `r round(mean_bm, 3)` (range = `r round(min_bm, 3)` - `r round(max_bm, 3)`), and the mean CR value for participants aging CR-like was `r round(mean_cr, 3)` (range = `r round(min_cr, 3)` - `r round(max_cr, 3)`). 
+We then classified participants as aging CR-like (N = `r cr_pathway`/`r total_participants`) or BM-like (N = `r bm_pathway`/`r total_participants`) based on how closely their hippocampal and memory annual change resembled CR or BM aging patterns (see Methods). Figure 4 distinguishes each individual as aging either CR-like or BM-like, and the color code shows their corresponding CR or BM value, with higher values indicating greater memory stability for their age. The mean BM value for participants aging BM-like was  `r round(mean_bm, 3)` (range = `r round(min_bm, 3)` - `r round(max_bm, 3)`), and the mean CR value for participants aging CR-like was `r round(mean_cr, 3)` (range = `r round(min_cr, 3)` - `r round(max_cr, 3)`). 
 ```{r echo=FALSE, warning=FALSE}
 # Divide data into pathways
 cr_path <- clean_data %>%
@@ -1337,9 +1337,7 @@ gamm_table <- data.frame(
 )
 ```
 
-We compared a linear mixed effects (LME) model and generalized additive mixed model (GAMM) fit to the memory/hippocampus volume and age data, while controlling for cohort/MRI scanner. For both models, we allowed a random intercept per participant. To assess model performance, we used the Akaike Information Criterion (AIC), Bayesian Information Criterion (BIC), and a likelihood ratio test (LRT) to compare the GAMM and LME models (Supplementary Table 1). The LRT evaluates whether the inclusion of non-linear terms enhances model fit, with a significant result indicating a preferable fit for the GAMM. The AIC and BIC also help identify the preferred model, with a difference of 10 or more favoring the model with lower values.
-
-We initially fit the GAMM using a range of basis functions and compared their fit to the LME model. Despite variations in the GAMM fit, the conclusions regarding how the GAMM and the LME model compared did not change. In Supplementary Table 1, we fit the GAMM with four basis functions for the memory model and five basis functions for the hippocampus model as increasing the number beyond this point did not substantially change the AIC nor BIC values. The smooth age-term was significant in the memory GAMM (effective degrees of freedom (EDF) = `r round(gamm_compare_em_memory$EDF, 3)`, _p_-value = `r format_p_value(gamm_compare_em_memory$p_value_gamm)`, _p_<sub>FDR</sub> = `r format_p_value(p_value_df[p_value_df$model_name == "gamm_memory_gamm", "adjusted_p_value"])`) and the hippocampus GAMM (EDF = `r round(gamm_compare_em_adj_hc$EDF, 3)`, _p_-value = `r format_p_value(gamm_compare_em_adj_hc$p_value_gamm)`, _p_<sub>FDR</sub> = `r format_p_value(p_value_df[p_value_df$model_name == "gamm_hc_gamm", "adjusted_p_value"])`. For the LME models, both models had significant age coefficients (memory: β = `r round(mem_age_lme$coef, 3)`, _p_ = `r format(format_p_value(mem_age_lme$p_value), scientific = FALSE)`, _p_<sub>FDR</sub> = `r format_p_value(p_value_df[p_value_df$model_name == "mem_age_lme", "adjusted_p_value"])`; hippocampal volume β = `r round(hc_age_lme$coef, 3)`, _p_ = `r format(format_p_value(hc_age_lme$p_value), scientific = FALSE)`, _p_<sub>FDR</sub> = `r format_p_value(p_value_df[p_value_df$model_name == "hc_age_lme", "adjusted_p_value"])`). For memory, the LME and GAMM fits were similar; however, the GAMM fit was better according to AIC and LRT. For hippocampal volume, the GAMM fit was better according to AIC, BIC, and LRT.
+We initially fit the GAMMs using a range of basis functions and compared their fit to the LME model. Despite variations in the GAMM fits, the conclusions regarding how the GAMM and the LME models compared did not change. In Supplementary Table 1, we fit the GAMMs with four basis functions for the memory model and five basis functions for the hippocampus model as increasing the number beyond this point did not substantially change the AIC nor BIC values. The smooth age-term was significant in the memory GAMM (effective degrees of freedom (EDF) = `r round(gamm_compare_em_memory$EDF, 3)`, _p_-value = `r format_p_value(gamm_compare_em_memory$p_value_gamm)`, _p_<sub>FDR</sub> = `r format_p_value(p_value_df[p_value_df$model_name == "gamm_memory_gamm", "adjusted_p_value"])`) and the hippocampus GAMM (EDF = `r round(gamm_compare_em_adj_hc$EDF, 3)`, _p_-value = `r format_p_value(gamm_compare_em_adj_hc$p_value_gamm)`, _p_<sub>FDR</sub> = `r format_p_value(p_value_df[p_value_df$model_name == "gamm_hc_gamm", "adjusted_p_value"])`. For the LME models, both models had significant age coefficients (memory: β = `r round(mem_age_lme$coef, 3)`, _p_ = `r format(format_p_value(mem_age_lme$p_value), scientific = FALSE)`, _p_<sub>FDR</sub> = `r format_p_value(p_value_df[p_value_df$model_name == "mem_age_lme", "adjusted_p_value"])`; hippocampal volume β = `r round(hc_age_lme$coef, 3)`, _p_ = `r format(format_p_value(hc_age_lme$p_value), scientific = FALSE)`, _p_<sub>FDR</sub> = `r format_p_value(p_value_df[p_value_df$model_name == "hc_age_lme", "adjusted_p_value"])`). For memory, the LME and GAMM fits were similar; however, the GAMM fit was better according to AIC and LRT. For hippocampal volume, the GAMM fit was better according to AIC, BIC, and LRT.
 
 __Supplementary Table 1__: _Linear Mixed Effects and Generalized Additive Mixed Models_
 ```{r suptab1, echo=FALSE} 
@@ -1406,7 +1404,7 @@ mem_age_unscaled <- get_mixed_effects_stats((memory) ~ age + (1 | id) + study, d
 ```
 <small>A) The association between memory and age with individual trajectories and a generalized additive mixed model (EDF = `r round(gamm_compare_em_memory$EDF, 3)`) and confidence intervals. B) The association between hippocampal volume and age with individual trajectories with a generalized additive mixed model (EDF = `r round(gamm_compare_em_adj_hc$EDF, 3)`) and confidence intervals. Abbreviations: EDF effective degrees of freedom.</small>
 
-**_Cognitive Reserve, Brain Maintenance and Age_**
+**_Cognitive Reserve’s and Brain Maintenance’s Relationship with Memory and Age_**
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 cr_age_lme <- get_mixed_effects_stats(
