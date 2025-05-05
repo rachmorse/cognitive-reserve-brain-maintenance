@@ -232,7 +232,7 @@ distance_to_bm_point <- function(y, x) {
   return(distance)
 }
 
-# Define a function to calculate the distance from a given data point to the point (1,1)
+# Define a function to calculate the perpendicular distance from a given data point to the line x= y
 distance_to_bm_line <- function(y, x) {
   # Calculate the intersection point (projection of the point onto the line x = y)
   intersection_x <- (x + y) / 2
@@ -256,15 +256,15 @@ data <- data %>%
 Next, this creates the cognitive reserve (CR) variable.
 
 ```{r cognitive reserve}
-# Define a function to calculate the distance from the data point to the point (1,1)
+# Define a function to calculate the distance from the data point to the point (-1,1)
 distance_to_cr_point <- function(y, x) {
-  # Calculate the shortest distance from the data point to (1,1)
+  # Calculate the shortest distance from the data point to (-1,1)
   distance <- sqrt((x + 1)^2 + (y - 1)^2)
 
   return(distance)
 }
 
-# Define a function to calculate the distance from to the line x = -y
+# Define a function to calculate the perpendicular distance from a given data point to the line x = -y
 distance_to_cr_line <- function(y, x) {
   # Calculate the intersection point (projection of the point onto the line x = -y)
   intersection_x <- (x - y) / 2
