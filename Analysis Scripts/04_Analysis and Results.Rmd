@@ -152,7 +152,7 @@ clean_data <- clean_data %>%
   mutate(FU_obs = rowMeans(select(., em_obs, hc_obs, fc_obs), na.rm = TRUE))
 
 clean_data <- clean_data %>%
-  mutate(Study = recode(cohort,
+  mutate(Study = dplyr::recode(cohort,
     "Betula" = "Umea Betula",
     "Cobra" = "Umea COBRA",
     "Oslo" = "Oslo LCBC",
@@ -1034,6 +1034,101 @@ __Figure 5:__ _The Interaction Between Cognitive Reserve, Functional Connectivit
 ```{r fig5, echo=FALSE, dpi = 400, fig.width=7, fig.height=4, message=FALSE, warning=FALSE}
 combined_plot
 ```
+```{r}
+####################################
+########### New analysis ###########
+####################################
+
+# Model with age interactions - alternative to interaction from lm
+model <- lmer(scale(memory) ~ scale(reverse_cr) * scale(adj_HIP_total) + (1|id) + study + scale(age_baseline) + scale(mem_time) + sex + scale(edu), data=long_clean_data)
+summary(model)
+
+summary(lm(scale(dmn_slopes) ~ scale(reverse_cr) + study, data = clean_data))
+summary(lm(scale(ec_slopes) ~ scale(reverse_cr) + study, data = clean_data))
+summary(lm(scale(sn_slopes) ~ scale(reverse_cr) + study, data = clean_data))
+
+summary(lmer(scale(memory) ~ scale(reverse_cr) * scale(ec) * scale(age) + (1|id) + study, data=long_clean_data))
+summary(lmer(scale(memory) ~ scale(reverse_cr) * scale(sn) * scale(age) + (1|id) + study, data=long_clean_data))
+summary(lmer(scale(memory) ~ scale(reverse_cr) * scale(dmn) * scale(age) + (1|id) + study, data=long_clean_data))
+
+# p-vals split by type of model (eg one for direct and one for relationship with age)
+pvals <- c(0.0410, 0.0372, 0.489089) # Direct
+pvals <- c(0.01569, 0.44351, 0.06564) # Age
+
+# Apply FDR correction
+pvals_fdr <- p.adjust(pvals, method = "fdr")
+
+print(pvals_fdr)
+
+# By this logic would need to test whether edu has an interaction with CR and age on mem
+summary(lmer(scale(memory) ~ scale(reverse_cr) * scale(edu) * scale(age) + (1|id) + study, data=long_clean_data))
+
+clean_data$reverse_cr_group <- cut(clean_data$reverse_cr,
+  breaks = quantile(clean_data$reverse_cr, probs = seq(0, 1, (1 / 2)), na.rm = TRUE),
+  include.lowest = TRUE,
+  labels = c("Low CR", "High CR")
+)
+
+clean_data$ec_group <- cut(clean_data$ec_slopes,
+  breaks = quantile(clean_data$ec_slopes, probs = seq(0, 1, (1 / 2)), na.rm = TRUE),
+  include.lowest = TRUE,
+  labels = c("Low ECN", "High ECN")
+)
+
+clean_data$dmn_group <- cut(clean_data$dmn_slopes,
+  breaks = quantile(clean_data$dmn_slopes, probs = seq(0, 1, (1 / 2)), na.rm = TRUE),
+  include.lowest = TRUE,
+  labels = c("Low DMN", "High DMN")
+)
+
+# Remove unneeded columns
+clean_data <- clean_data %>% 
+  select(-X, -X.1)
+
+# Pivot data from wide to long
+long_clean_data_figure <- clean_data %>%
+  pivot_longer(
+    cols = matches("(.+)\\.(\\d+)$"),             
+    names_to = c("base_var", "timepoint"),
+    names_pattern = "(.+)\\.(\\d+)$",
+    values_to = "value"
+  ) %>%
+  mutate(timepoint = as.numeric(timepoint)) %>%   # Convert timepoint to numeric
+  pivot_wider(
+    names_from = "base_var",
+    values_from = "value"
+  )
+
+long_clean_data_figure_low_cr <- long_clean_data_figure %>% 
+  filter(reverse_cr_group == "Low CR") %>% 
+  filter(!is.na(reverse_cr_group)) %>% 
+  filter(!is.na(ec_group))
+
+long_clean_data_figure_high_cr <- long_clean_data_figure %>% 
+  filter(reverse_cr_group == "High CR") %>% 
+  filter(!is.na(reverse_cr_group)) %>% 
+  filter(!is.na(ec_group))
+
+
+p1 <- ggplot(long_clean_data_figure_low_cr, aes(x = age, y = memory, color = ec_group)) +
+  geom_line(data = long_clean_data_figure_low_cr, aes(x = age, y = memory, group = id), color = "lightgray", alpha = 0.5) +
+  geom_point(data = long_clean_data_figure_low_cr, aes(x = age, y = memory), color = "gray", size = 1, alpha = 0.8) +     
+  geom_smooth(method = "lm") +
+  labs(title = "Low CR") + 
+  theme_bw() + 
+  theme(legend.position = "none")
+
+
+p2 <- ggplot(long_clean_data_figure_high_cr, aes(x = age, y = memory, color = ec_group)) +
+  geom_line(data = long_clean_data_figure_high_cr, aes(x = age, y = memory, group = id), color = "lightgray", alpha = 0.5) +
+  geom_point(data = long_clean_data_figure_high_cr, aes(x = age, y = memory), color = "gray", size = 1, alpha = 0.8) + 
+  geom_smooth(method = "lm") + 
+  labs(title = "High CR") + 
+  theme_bw()
+
+combined_test <- p1 + p2 + plot_layout(ncol = 2)
+combined_test
+```
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 coeffs_by_group_ec <- pred_int_ec %>%
@@ -1132,19 +1227,22 @@ Note. Models are adjusted for cohort/MRI scanner. _p_-values are adjusted for mu
 
 **_Linear Mixed Effects and Generalized Additive Mixed Models for Memory, Hippocampus Volume, and Age_**
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
-# Convert df to long format
+# Remove unneeded columns
+clean_data <- clean_data %>% 
+  select(-X, -X.1)
+
+# Pivot data from wide to long
 long_clean_data <- clean_data %>%
   pivot_longer(
-    cols = matches("^memory\\.\\d$|^age\\.\\d$|^adj_HIP_total\\.\\d$"),
-    names_to = c(".value", "timepoint"),
-    names_pattern = "(.*)(\\d$)"
-  )
-
-long_clean_data <- long_clean_data %>%
-  rename(
-    age = "age.",
-    adj_HIP_total = "adj_HIP_total.",
-    memory = "memory."
+    cols = matches("(.+)\\.(\\d+)$"),             
+    names_to = c("base_var", "timepoint"),
+    names_pattern = "(.+)\\.(\\d+)$",
+    values_to = "value"
+  ) %>%
+  mutate(timepoint = as.numeric(timepoint)) %>%   # Convert timepoint to numeric
+  pivot_wider(
+    names_from = "base_var",
+    values_from = "value"
   )
 
 # Add a function for getting the stats from LME models
@@ -1796,3 +1894,4 @@ p_value_df <- rbind(
 # Output the combined p-values
 write.csv(p_value_df, file = "/tsd/p274/data/durable/projects/p027-cr_bm/p_value.csv")
 ```
+
