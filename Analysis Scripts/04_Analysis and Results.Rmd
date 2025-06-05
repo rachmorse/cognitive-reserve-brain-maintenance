@@ -67,6 +67,10 @@ if (!require("MuMIn")) {
   install.packages("MuMIn")
   require("MuMIn")
 }
+if (!require("interactions")) {
+  install.packages("interactions")
+  require("interactions")
+}
 ```
 
 ```{r echo=FALSE, warning=FALSE}
@@ -571,6 +575,21 @@ cr_int_var <- c(
 
 # Running sensitivity analyses
 cr_validation <- get_mixed_effects_stats(scale(memory) ~ scale(adj_HIP_total) * scale(reverse_cr) + (1|id) + study + scale(age_baseline) + scale(mem_time) + sex + scale(edu), data = long_clean_data, cr_int_var)
+
+######################
+# Take a look at the plot and think about what it means for high CR to be significant too 
+######################
+# Fit the model 
+model <- lmer(scale(memory) ~ scale(reverse_cr) * scale(adj_HIP_total) + (1|id) + 
+              study + age + mem_time + sex + edu, 
+              data = long_clean_data_hc_mem_fc)
+
+# Johnson-Neyman plot
+jn_result <- johnson_neyman(model, 
+                           pred = "scale(adj_HIP_total)", 
+                           modx = "scale(reverse_cr)",
+                           plot = TRUE)
+jn_result$plot 
 ```
 
 __**Analyzing Cognitive Reserve and Brain Maintenance Variables:**__
@@ -919,121 +938,25 @@ With functional connectivity, there was no evidence that ECN or DMN connectivity
 Figure 5 panel A depicts how the relationship between memory and adjusted hippocampal volume varies by anterior SN connectivity with participants divided into a low anterior SN connectivity and high anterior SN connectivity groups.  Panel B depicts the relationship between our CR variable and anterior SN connectivity in panel B. All longitudinal functional connectivity results are summarized in Table 6. Cross-sectionally, there were no significant interactions between functional connectivity and adjusted hippocampal volume regressed on memory or any associations between our CR variable and functional connectivity (Supplementary Table 2).
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
-# Center the variables
-long_cr_pathway_fc$reverse_cr_centered = scale(long_cr_pathway_fc$reverse_cr)
-long_cr_pathway_fc$sn_centered = scale(long_cr_pathway_fc$sn)
+# Fit the model 
+model <- lmer(scale(memory) ~ scale(sn) * scale(adj_HIP_total) + (1|id) + 
+              study + age + mem_time + sex + edu, 
+              data = long_clean_data_hc_mem_fc)
 
-# Fit the mixed-effects model
-model_lme_cr_sn <- lmer(sn_centered ~ reverse_cr_centered + (1 | id) + study + time, long_cr_pathway_fc)
-
-reverse_cr_seq <- seq(
-  from = min(long_cr_pathway_fc$reverse_cr_centered, na.rm = TRUE),
-  to   = max(long_cr_pathway_fc$reverse_cr_centered, na.rm = TRUE),
-  length.out = 100
-)
-
-# Generate predictions for each CR groupHarmless7-Tartar-Dust
-# Divides the low and high CR groups into 100 reverse_cr bands and,
-# using the LME model from above, predicts their memory for each of the reverse_cr bands
-em_2group <- emmeans(
-  model_lme_cr_sn,
-  specs = ~ reverse_cr_centered,
-  at    = list(reverse_cr_centered = reverse_cr_seq),
-  reff  = 0
-)
-
-# Convert the emmeans results to a data frame and rename columns
-predictions <- summary(em_2group) %>%
-  as.data.frame() %>%
-  rename(
-    predicted   = emmean,
-    lower_bound = lower.CL,
-    upper_bound = upper.CL
-  ) %>%
-  mutate(reverse_cr_centered = as.numeric(reverse_cr_centered))
-
-# Create the plot
-p1 <- ggplot() +
-  geom_point(data = long_cr_pathway_fc, aes(x = reverse_cr_centered, y = sn_centered), color = "grey", size = 1, alpha = 0.8) + 
-  geom_ribbon(data = predictions, aes(x = reverse_cr_centered, ymin = lower_bound, ymax = upper_bound), alpha = 0.3) + 
-  geom_line(data = predictions, aes(x = reverse_cr_centered, y = predicted), color = "#129990", size = 1.2) +  
-  labs(
-    x = "Cognitive Reserve Variable", 
-    y = "Salience Network Connectivty", 
-    color = "Group", 
-    fill = "Group", 
-    title = "Participants Aging CR-like") +
-  theme_minimal() +
-  theme(legend.position = "bottom",
-        plot.tag = element_text(size = 12), 
-        plot.tag.position = c(0.08, 0.055))
-
-## Second plot ##
-
-# Center the variables
-long_clean_data_hc_mem_fc$memory_centered = scale(long_clean_data_hc_mem_fc$memory)
-long_clean_data_hc_mem_fc$sn_centered = scale(long_clean_data_hc_mem_fc$sn)
-long_clean_data_hc_mem_fc$adj_HIP_total_centered = scale(long_clean_data_hc_mem_fc$adj_HIP_total)
-
-# Fit the mixed-effects model
-long_clean_data_hc_mem_fc$sn_group <- cut(long_clean_data_hc_mem_fc$sn_centered,
-  breaks = quantile(long_clean_data_hc_mem_fc$sn_centered, probs = seq(0, 1, (1 / 2)), na.rm = TRUE),
-  include.lowest = TRUE,
-  labels = c("Low SN Connectivity", "High SN Connectivity")
-)
-
-model_res_lme_cr <- lmer((memory_centered) ~ (sn_group) * (adj_HIP_total_centered) + (1|id) + study + time + sex + edu, long_clean_data_hc_mem_fc)
-
-adj_HIP_total_centered_seq <- seq(min(long_clean_data_hc_mem_fc$adj_HIP_total_centered), max(long_clean_data_hc_mem_fc$adj_HIP_total_centered), length.out = 100)
-
-# Generate predictions for each CR group
-# Divides the low and high CR groups into 100 age bands and,
-# using the LME model from above, predicts their memory for each of the age bands
-em_2group <- emmeans(
-  model_res_lme_cr,
-  specs = ~ adj_HIP_total_centered * sn_group,
-  at    = list(adj_HIP_total_centered = adj_HIP_total_centered_seq),
-  reff  = 0
-)
-
-# Convert the emmeans results to a data frame and rename columns
-predictions <- summary(em_2group) %>%
-  as.data.frame() %>%
-  rename(
-    predicted   = emmean,
-    lower_bound = lower.CL,
-    upper_bound = upper.CL
-  ) %>%
-  mutate(adj_HIP_total_centered = as.numeric(adj_HIP_total_centered))
-
-# Define colors for each CR group
-palette <- c("High SN Connectivity" = "#A4CCD9", "Low SN Connectivity" = "#FFAAAA")
-
-# Create the plot
-p2 <- ggplot() +
-  geom_line(data = long_clean_data_hc_mem_fc, aes(x = adj_HIP_total_centered, y = memory_centered, group = id), color = "lightgray", alpha = 0.5) + # Plot individual trajectories
-  geom_point(data = long_clean_data_hc_mem_fc, aes(x = adj_HIP_total_centered, y = memory_centered), color = "gray", size = 1, alpha = 0.8) + # Add scatter points
-  geom_ribbon(data = predictions, aes(x = adj_HIP_total_centered, ymin = lower_bound, ymax = upper_bound, fill = as.factor(sn_group)), alpha = 0.3) + # Add CIs
-  geom_line(data = predictions, aes(x = adj_HIP_total_centered, y = predicted, color = as.factor(sn_group)), size = 1.2) + # Plot predicted lines for each group
-  scale_color_manual(values = palette) +
-  scale_fill_manual(values = palette) + # Ensure fill colors match line colors
-  labs(
-    x = "Hippocampal Volume", 
-    y = "Memory", 
-    color = "Group", 
-    fill = "Group") +
-  theme_minimal() +
-  theme(legend.position = "bottom",
-        plot.tag = element_text(size = 12), 
-        plot.tag.position = c(0.08, 0.055))
-
-combined_plot <- p2 + p1
+# Johnson-Neyman plot
+jn_result <- johnson_neyman(model, 
+                           pred = "scale(adj_HIP_total)", 
+                           modx = "scale(sn)",
+                           plot = TRUE)
+jn_plot <- jn_result$plot  
 ```
 
 __Figure 5:__ _The Interaction Between Cognitive Reserve, Functional Connectivity Change, and Memory Change_
 
 ```{r fig5, echo=FALSE, dpi = 400, fig.width=7, fig.height=4, message=FALSE, warning=FALSE}
-combined_plot
+jn_plot + 
+  xlab("Salience Network Connectivity") +
+  ylab("Effect of Hippocampal Volume on Memory")
 ```
 
 
