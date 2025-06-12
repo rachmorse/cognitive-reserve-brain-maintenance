@@ -3,6 +3,7 @@ Fisher z-transformation.R
 Format scripts.R
 fig 1 code.R
 Fig 1.jpeg
+*.png
 
 .DS_Store
 .venv/
