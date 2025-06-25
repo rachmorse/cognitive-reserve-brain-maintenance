@@ -4,16 +4,18 @@ import nibabel as nib
 import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib as mpl
+from PIL import Image
 
 from nilearn import datasets, surface, plotting
 
-def plot_salience_network(roi_dict, max_val, atlas_path, output_file):
+def plot_salience_network(roi_dict, min_val, max_val, atlas_path, output_file):
     """
     Plot a multi-view brain surface image using an ROI dictionary for 
     the Shirer atlas with weighted connectivity values.
 
     Args:
         roi_dict (dict): Dictionary mapping ROI names to connectivity values (e.g. where the average connectivty values are for each ROI).
+        min_val (float): Minimum value for color scaling.
         max_val (float): Maximum value for color scaling.
         atlas_path (str): Path to the Shirer atlas NIfTI file.
         output_file (str): Path to save the output image.
@@ -40,6 +42,7 @@ def plot_salience_network(roi_dict, max_val, atlas_path, output_file):
     for roi_name, val in roi_dict.items():
         if roi_name in roi_index_map:
             idx = roi_index_map[roi_name]
+
             roi_mask = atlas_data[..., idx]
             # Set locations corresponding to `roi_mask == 1` to val
             mask_indices = roi_mask > 0
@@ -53,7 +56,7 @@ def plot_salience_network(roi_dict, max_val, atlas_path, output_file):
     texture_right = surface.vol_to_surf(weighted_img, fsaverage.pial_right)
 
     # Set color limits for the surface plots
-    vmin, vmax = 0.0, max_val
+    vmin, vmax = min_val, max_val
 
     # Create a temporary folder for each view of the surface
     temp_dir = "temp_surf_outputs"
@@ -77,7 +80,7 @@ def plot_salience_network(roi_dict, max_val, atlas_path, output_file):
             hemi=hemi,
             view=view,
             colorbar=False,
-            cmap="autumn_r",
+            cmap="coolwarm",
             vmin=vmin,
             vmax=vmax,
             threshold=None,
@@ -91,9 +94,9 @@ def plot_salience_network(roi_dict, max_val, atlas_path, output_file):
     # Create a separate color bar
     fig_cbar, ax_cbar = plt.subplots(figsize=(0.05, 0.4)) # Needed to adjust size to get it to fit with the other images
     norm = mpl.colors.Normalize(vmin=vmin, vmax=vmax)
-    sm = plt.cm.ScalarMappable(cmap="autumn_r", norm=norm)
+    sm = plt.cm.ScalarMappable(cmap="coolwarm", norm=norm)
     sm.set_array([])
-    cbar = plt.colorbar(sm, cax=ax_cbar, format="%.3f")
+    cbar = plt.colorbar(sm, cax=ax_cbar, format="%.1f")
     cbar.ax.tick_params(labelsize=2, length=1.5, width=0.2)
     cbar.outline.set_linewidth(0.2) 
     cbar.ax.yaxis.set_major_locator(plt.MaxNLocator(5))
@@ -128,21 +131,69 @@ def plot_salience_network(roi_dict, max_val, atlas_path, output_file):
     print(f"Multi-view surface image saved to {output_file}")
 
 if __name__ == "__main__":
-    diff_df = {
-        'AS_L_Ins': [0.041283],
-        'AS_L_lobule_VI_crus_I': [0.010575],
-        'AS_L_midFront': [0.025098],
-        'AS_RL_acc_medPref_sma': [0.055351],
-        'AS_R_Ins': [0.050803],
-        'AS_R_lobule_VI_crus_I': [0.033193],
-        'AS_R_midFront': [0.039052]
+    low_cr = {
+        'AS_L_Ins': [-0.1589759036405],
+        'AS_L_lobule_VI_crus_I': [0.030137088939851],
+        'AS_L_midFront': [-0.113738086645253],
+        'AS_RL_acc_medPref_sma': [-0.218798317129415],
+        'AS_R_Ins': [-0.141448275313215],
+        'AS_R_lobule_VI_crus_I': [-0.079806493187511],
+        'AS_R_midFront': [-0.12152666665449]
+    }
+
+    high_cr = {
+        'AS_L_Ins': [0.283295033736563],
+        'AS_L_lobule_VI_crus_I': [0.217884130998693],
+        'AS_L_midFront': [0.297657275526046],
+        'AS_RL_acc_medPref_sma': [0.411921104079439],
+        'AS_R_Ins': [0.392241012668542],
+        'AS_R_lobule_VI_crus_I': [0.348975881090811],
+        'AS_R_midFront': [0.364782540112209]
     }
 
     # Set atlas path
     atlas_path = "/Users/rachelmorse/Documents/2023:2024/CR & BM Project/Task invariant network/subrois_shirer2012_mod_4d.nii.gz"
     
     plot_salience_network(
-        diff_df, 
-        0.055,
-        atlas_path, 
-        output_file="group_high_vs_low_cr_surface.png")
+        low_cr,
+        -0.412,
+        0.412,
+        atlas_path,
+        output_file="group_low_cr_surface.png")
+    
+    plot_salience_network(
+        high_cr,
+        -0.412,
+        0.412,
+        atlas_path,
+        output_file="group_high_cr_surface.png")
+    
+    img_low = Image.open("group_low_cr_surface.png")
+    img_high = Image.open("group_high_cr_surface.png")
+
+    # Set crop margins (pixels to remove from top and bottom)
+    crop_top = 50
+    crop_bottom = 50
+
+    # Crop img_low
+    width, height = img_low.size
+    img_low = img_low.crop((0, crop_top, width, height - crop_bottom))
+
+    # Crop img_high
+    width, height = img_high.size
+    img_high = img_high.crop((0, crop_top, width, height - crop_bottom))
+
+    fig, axs = plt.subplots(2, 1, figsize=(8, 4))
+
+    axs[0].imshow(img_high)
+    axs[0].axis('off')
+    axs[0].text(10, 50, "High CR Group", color='black', fontsize=10, va='top', ha='left')
+
+    axs[1].imshow(img_low)
+    axs[1].axis('off')
+    axs[1].text(10, 50, "Low CR Group", color='black', fontsize=10, va='top', ha='left')
+
+    plt.tight_layout()
+    plt.subplots_adjust(wspace=-0.07, hspace=-0.15)
+    plt.savefig("high_vs_low_cr_sn_plot.png", bbox_inches='tight', dpi=400, pad_inches=0)
+    plt.close()
