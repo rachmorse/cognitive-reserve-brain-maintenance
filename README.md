@@ -16,7 +16,8 @@ This section includes several scripts used to conduct this study:
 - `02_Calculating Annual Change.Rmd`: Calculates adjusted hippocampal volume, average functional connectivity, and annual change variables.
 - `03_Descriptive Stats_CRBM Variables.Rmd`: Visualizes and conducts descriptive statistics for study variables and creates the CR/BM variables.
 - `04_Analysis and Results.Rmd`: Contains all primary and supplementary analyses from the study.
-- `05_Neuroimaging Figures.ipynb`: Generates neuroimaging figures of the hippocampus and relevant functional networks.
+- `05_calculate_avg_sn_by_group.R`: Creates a CSV with average connectivity for each ROI in the Salience Network for low CR and high CR groups across all timepoints.
+- `06_sn_by_cr_group_figure.py`: Generates multi-view brain surface plots from Salience Network connectivity comparing low CR and high CR groups.
 
 ## Usage
 
