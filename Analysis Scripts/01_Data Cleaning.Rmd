@@ -793,6 +793,10 @@ Now exclude values that are not within 3 SD of the norm for each given variable 
 # Start by making a merged df
 merged_cohorts <- bind_rows(waha_df, cobra_df, betula_df, oslo_df)
 
+# Filter the max baseline age to be 60 years
+merged_cohorts <- merged_cohorts %>% 
+  filter(age.1 >= 60)
+
 # Check which columns need to be excluded when removing outliers by removing the FC columns to see the data better
 filtered_df <- merged_cohorts %>% select(-contains(c("RECN", "DMN", "LECN", "SN")))
 
