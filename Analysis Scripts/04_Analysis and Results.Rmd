@@ -1,9 +1,9 @@
 ---
 title: "Results"
 output:
+  word_document: default
   html_document:
     df_print: paged
-  word_document: default
 ---
 
 ```{r setup, include=FALSE}
@@ -848,6 +848,7 @@ long_cr_pathway_fc <- long_clean_data_fc %>%
 cr_dmn <- get_mixed_effects_stats(scale(dmn) ~ scale(reverse_cr) + (1|id) + study, data = long_cr_pathway_fc, priority_var_int_cr)
 cr_ec <- get_mixed_effects_stats(scale(ec) ~ scale(reverse_cr) + (1|id) + study, data = long_cr_pathway_fc, priority_var_int_cr)
 cr_sn <- get_mixed_effects_stats(scale(sn) ~ scale(reverse_cr) + (1|id) + study, data = long_cr_pathway_fc, priority_var_int_cr)
+
 # Get the stats for the figure
 cr_sn_unscaled <- get_mixed_effects_stats(sn ~ reverse_cr + (1|id) + study, data = long_cr_pathway_fc, priority_var_int_cr)
 
@@ -856,11 +857,11 @@ cr_ec_mem <- get_mixed_effects_stats(scale(memory) ~ scale(ec) + (1|id) + study 
 cr_sn_mem <- get_mixed_effects_stats(scale(memory) ~ scale(sn) + (1|id) + study + age + mem_time + sex + edu, data = long_clean_data_hc_mem_fc, priority_var_int_cr)
 ```
 
-With functional connectivity, there was evidence that anterior SN connectivity moderated the relationship between hippocampal volume and memory such that participants with higher anterior SN connectivity values showed no significant relationship between memory and hippocampal volume (β = `r round(cr_sn_stats$coef, 3)`, _p_ = `r format(format_p_value(cr_sn_stats$p_value), scientific = FALSE)`, _p_<sub>FDR</sub> = `r format_p_value(p_value_df[p_value_df$model_name == "cr_sn_stats", "adjusted_p_value"])`, marginal r² = `r round(cr_sn_stats$marginal_r2, 3)`, conditional r² = `r round(cr_sn_stats$conditional_r2, 3)`; Figure 5). Anterior SN connectivity was also positively correlated with memory (β = `r round(cr_sn_mem$coef, 3)`, _p_ = `r format(format_p_value(cr_sn_mem$p_value), scientific = FALSE)`, _p_<sub>FDR</sub> = `r format_p_value(p_value_df[p_value_df$model_name == "cr_sn_mem", "adjusted_p_value"])`, marginal r² = `r round(cr_sn_mem$marginal_r2, 3)`, conditional r² = `r round(cr_sn_mem$conditional_r2, 3)`), and there was a positive relationship between our CR variable and anterior SN connectivity in participants aging CR-like (β = `r round(cr_sn$coef, 3)`, _p_ = `r format(format_p_value(cr_sn$p_value), scientific = FALSE)`, _p_<sub>FDR</sub> = `r format_p_value(p_value_df[p_value_df$model_name == "cr_sn", "adjusted_p_value"])`, marginal r² = `r round(cr_sn$marginal_r2, 3)`, conditional r² = `r round(cr_sn$conditional_r2, 3)`). 
+With functional connectivity, there was evidence that anterior SN connectivity moderated the relationship between hippocampal volume and memory (β = `r round(cr_sn_stats$coef, 3)`, _p_ = `r format(format_p_value(cr_sn_stats$p_value), scientific = FALSE)`, _p_<sub>FDR</sub> = `r format_p_value(p_value_df[p_value_df$model_name == "cr_sn_stats", "adjusted_p_value"])`, marginal r² = `r round(cr_sn_stats$marginal_r2, 3)`, conditional r² = `r round(cr_sn_stats$conditional_r2, 3)`), such that participants with higher anterior SN connectivity did not have a significant relationship between memory and hippocampal volume (Figure 5). Anterior SN connectivity was also positively correlated with memory (β = `r round(cr_sn_mem$coef, 3)`, _p_ = `r format(format_p_value(cr_sn_mem$p_value), scientific = FALSE)`, _p_<sub>FDR</sub> = `r format_p_value(p_value_df[p_value_df$model_name == "cr_sn_mem", "adjusted_p_value"])`, marginal r² = `r round(cr_sn_mem$marginal_r2, 3)`, conditional r² = `r round(cr_sn_mem$conditional_r2, 3)`), and there was a positive relationship between our CR variable and anterior SN connectivity in participants aging CR-like (β = `r round(cr_sn$coef, 3)`, _p_ = `r format(format_p_value(cr_sn$p_value), scientific = FALSE)`, _p_<sub>FDR</sub> = `r format_p_value(p_value_df[p_value_df$model_name == "cr_sn", "adjusted_p_value"])`, marginal r² = `r round(cr_sn$marginal_r2, 3)`, conditional r² = `r round(cr_sn$conditional_r2, 3)`) (Figure 6).
 
 However, there was no evidence that ECN or DMN connectivity moderated the relationship between hippocampal volume and memory (ECN: _p_ = `r format_p_value(cr_ecn_stats$p_value)`, _p_<sub>FDR</sub> = `r format_p_value(p_value_df[p_value_df$model_name == "cr_ecn_stats", "adjusted_p_value"])`; DMN: _p_ = `r format_p_value(cr_dmn_stats$p_value)`, _p_<sub>FDR</sub> = `r format_p_value(p_value_df[p_value_df$model_name == "cr_dmn_stats", "adjusted_p_value"])`). Moreover, there was no evidence of a relationship between ECN or DMN connectivity and memory (ECN: _p_ = `r format_p_value(cr_ec_mem$p_value)`, _p_<sub>FDR</sub> = `r format_p_value(p_value_df[p_value_df$model_name == "cr_ec_mem", "adjusted_p_value"])`; DMN: _p_ = `r format_p_value(cr_dmn_mem$p_value)`, _p_<sub>FDR</sub> = `r format_p_value(p_value_df[p_value_df$model_name == "cr_dmn_mem", "adjusted_p_value"])`), or of a relationship between our CR variable and ECN or DMN connectivity in participants aging CR-like (ECN: _p_ = `r format_p_value(cr_ec$p_value)`, _p_<sub>FDR</sub> = `r format_p_value(p_value_df[p_value_df$model_name == "cr_ec", "adjusted_p_value"])`; DMN: _p_ = `r format_p_value(cr_dmn$p_value)`, _p_<sub>FDR</sub> = `r format_p_value(p_value_df[p_value_df$model_name == "cr_dmn", "adjusted_p_value"])`). 
 
-Figure 5 panel A depicts how the relationship between memory and hippocampal volume varies by anterior SN connectivity, demonstrating that there is only a significant positive relationship between memory and hippocampal volume for participants with low anterior SN connectivity. Panel B depicts the relationship between our CR variable and anterior SN connectivity in participants aging CR-like. All functional connectivity results are summarized in Tables 5 and 6.
+Figure 5 depicts how the hippocampal volume–memory increases as anterior Salience Network connectivity decreases, demonstrating a significant positive relationship between memory and hippocampal volume only for participants with anterior SN connectivity less than 0.09SD above the mean. Figure 6 shows the difference in anterior SN connectivity when comparing low versus high CR groups. All functional connectivity results are summarized in Tables 5 and 6.
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 # Fit the model 
@@ -877,7 +878,7 @@ jn_plot <- jn_result$plot
 jn_plot <- jn_plot + 
   xlab("Anterior Salience Network Connectivity") +
   ylab("Effect of Hippocampal Volume on Memory") +
-  labs(caption = "A)", title = "Johnson-Neyman Plot") +
+  labs(title = "Johnson-Neyman Plot") +
   theme(plot.caption = element_text(size = 10, hjust = -0.2),
         legend.position = "bottom",
         title = NULL,
@@ -885,66 +886,22 @@ jn_plot <- jn_plot +
         axis.title.y = element_text(size = 11),
         plot.title = element_text(face ="plain", size = 11)
         )
-  
-# Fit the mixed-effects model
-model_lme_cr_sn <- lmer(sn ~ reverse_cr + (1 | id) + study + time, long_cr_pathway_fc)
-
-reverse_cr_seq <- seq(
-  from = min(long_cr_pathway_fc$reverse_cr, na.rm = TRUE),
-  to   = max(long_cr_pathway_fc$reverse_cr, na.rm = TRUE),
-  length.out = 100
-)
-
-# Generate predictions for each CR group
-# Divides the low and high CR groups into 100 reverse_cr bands and,
-# using the LME model from above, predicts their memory for each of the reverse_cr bands
-em_2group <- emmeans(
-  model_lme_cr_sn,
-  specs = ~ reverse_cr,
-  at    = list(reverse_cr = reverse_cr_seq),
-  reff  = 0
-)
-
-# Convert the emmeans results to a data frame and rename columns
-predictions <- summary(em_2group) %>%
-  as.data.frame() %>%
-  rename(
-    predicted   = emmean,
-    lower_bound = lower.CL,
-    upper_bound = upper.CL
-  ) %>%
-  mutate(reverse_cr = as.numeric(reverse_cr))
-
-# Create the plot
-p2 <- ggplot() +
-  geom_point(data = long_cr_pathway_fc, aes(x = reverse_cr, y = sn), color = "grey", size = 1, alpha = 0.8) + 
-  geom_ribbon(data = predictions, aes(x = reverse_cr, ymin = lower_bound, ymax = upper_bound, ), fill = "#3caebf", alpha = 0.3) + 
-  geom_line(data = predictions, aes(x = reverse_cr, y = predicted), color = "#3caebf", size = 1.2) +  
-  labs(
-    x = "Cognitive Reserve Variable", 
-    y = "Anterior Salience Network Connectivty", 
-    color = "Group", 
-    fill = "Group", 
-    title = "Participants Aging CR-like",
-    tag = "B)") +
-  theme_minimal() +
-  theme(legend.position = "bottom",
-        plot.tag = element_text(size = 10), 
-        plot.tag.position = c(0.02, 0.02),
-        plot.margin = margin(t = 55, l = 15), # Increase left and top margin
-        plot.title = element_text(size = 11)) 
 
 cr_fc <- jn_plot + 
   xlab("Anterior Salience Network Connectivity") +
-  ylab("Effect of Hippocampal Volume on Memory") + p2 + plot_layout(ncol = 2) 
+  ylab("Effect of Hippocampal Volume on Memory") 
 ```
 
-__Figure 5:__ _The Relationships Between Cognitive Reserve, Functional Connectivity, and Memory_
+__Figure 5:__ _Anterior Salience Network Functional Connectivity and the Hippocampal-Memory Relationship_
 
-```{r fig5, echo=FALSE, dpi = 400, fig.width=7, fig.height=5, message=FALSE, warning=FALSE}
+```{r fig5, echo=FALSE, dpi = 400, fig.width=5, fig.height=5, message=FALSE, warning=FALSE}
 cr_fc
 ```
-A) A Johnson-Neyman plot of how the effect of hippocampal volume on memory changes as anterior Salience Network connectivity changes. The plot shows that anterior Salience Network connectivity decreases the relationship between hippocampal volume and memory and that the relationship between hippocampal volume and memory is only significant when Salience Network connectivity is less than 0.14. B) The association between our cognitive reserve variable and anterior Salience Network connectivity plotted using a linear mixed effects model that controls for cohort/MRI scanner using estimated marginal means. The model produces a coefficient of `r format(round(cr_sn$coef, 3), scientific = FALSE)` (scaled: `r round(cr_sn_unscaled$coef, 3)`) with confidence intervals. The lower panel highlights the anterior Salience Network as defined in the Shirer atlas. Abbreviations: ECN Executive Control Network, SN Salience Network, CR Cognitive Reserve, n.s. not significant.
+Johnson-Neyman plot of how the hippocampal volume-memory relationship changes as anterior Salience Network connectivity changes. The plot shows that as anterior Salience Network connectivity decreases, the hippocampal volume-memory relationship increases, only becoming significant when Salience Network connectivity is less than 0.09SD above the mean. Above that threshold, the hippocampal volume–memory relationship is not significant. Abbreviations: SN Salience Network, n.s. not significant. 
+
+__Figure 6:__ _Cognitive Reserve and Anterior Salience Network Connectivity_
+
+Difference in anterior Salience Network connectivity for high CR and low CR participants among those aging CR-like. Each region’s connectivity was averaged across all timepoints per participant and z-scored before calculating an average for each group. Abbreviations: CR Cognitive Reserve.   
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 # Create the table
