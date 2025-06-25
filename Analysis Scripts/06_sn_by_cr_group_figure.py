@@ -132,23 +132,23 @@ def plot_salience_network(roi_dict, min_val, max_val, atlas_path, output_file):
 
 if __name__ == "__main__":
     low_cr = {
-        'AS_L_Ins': [-0.1589759036405],
-        'AS_L_lobule_VI_crus_I': [0.030137088939851],
-        'AS_L_midFront': [-0.113738086645253],
-        'AS_RL_acc_medPref_sma': [-0.218798317129415],
-        'AS_R_Ins': [-0.141448275313215],
-        'AS_R_lobule_VI_crus_I': [-0.079806493187511],
-        'AS_R_midFront': [-0.12152666665449]
+        'AS_L_Ins': [-0.171617381974146],
+        'AS_L_lobule_VI_crus_I': [0.035358012879239],
+        'AS_L_midFront': [-0.171852181554476],
+        'AS_RL_acc_medPref_sma': [-0.234086435582008],
+        'AS_R_Ins': [-0.172198338547784],
+        'AS_R_lobule_VI_crus_I': [-0.066070453100469],
+        'AS_R_midFront': [-0.16334005153509]
     }
 
     high_cr = {
-        'AS_L_Ins': [0.283295033736563],
-        'AS_L_lobule_VI_crus_I': [0.217884130998693],
-        'AS_L_midFront': [0.297657275526046],
-        'AS_RL_acc_medPref_sma': [0.411921104079439],
-        'AS_R_Ins': [0.392241012668542],
-        'AS_R_lobule_VI_crus_I': [0.348975881090811],
-        'AS_R_midFront': [0.364782540112209]
+        'AS_L_Ins': [0.346028228415043],
+        'AS_L_lobule_VI_crus_I': [0.228576151997733],
+        'AS_L_midFront': [0.282761040390555],
+        'AS_RL_acc_medPref_sma': [0.42897059934539],
+        'AS_R_Ins': [0.407130229563943],
+        'AS_R_lobule_VI_crus_I': [0.353893197175208],
+        'AS_R_midFront': [0.38074012127959]
     }
 
     # Set atlas path
@@ -156,15 +156,15 @@ if __name__ == "__main__":
     
     plot_salience_network(
         low_cr,
-        -0.412,
-        0.412,
+        -0.429,
+        0.429,
         atlas_path,
         output_file="group_low_cr_surface.png")
     
     plot_salience_network(
         high_cr,
-        -0.412,
-        0.412,
+        -0.429,
+        0.429,
         atlas_path,
         output_file="group_high_cr_surface.png")
     
