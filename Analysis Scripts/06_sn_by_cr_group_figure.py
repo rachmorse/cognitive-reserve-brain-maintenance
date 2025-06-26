@@ -80,7 +80,7 @@ def plot_salience_network(roi_dict, min_val, max_val, atlas_path, output_file):
             hemi=hemi,
             view=view,
             colorbar=False,
-            cmap="coolwarm",
+            cmap="YlOrRd",
             vmin=vmin,
             vmax=vmax,
             threshold=None,
@@ -94,9 +94,9 @@ def plot_salience_network(roi_dict, min_val, max_val, atlas_path, output_file):
     # Create a separate color bar
     fig_cbar, ax_cbar = plt.subplots(figsize=(0.05, 0.4)) # Needed to adjust size to get it to fit with the other images
     norm = mpl.colors.Normalize(vmin=vmin, vmax=vmax)
-    sm = plt.cm.ScalarMappable(cmap="coolwarm", norm=norm)
+    sm = plt.cm.ScalarMappable(cmap="YlOrRd", norm=norm)
     sm.set_array([])
-    cbar = plt.colorbar(sm, cax=ax_cbar, format="%.1f")
+    cbar = plt.colorbar(sm, cax=ax_cbar, format="%.2f")
     cbar.ax.tick_params(labelsize=2, length=1.5, width=0.2)
     cbar.outline.set_linewidth(0.2) 
     cbar.ax.yaxis.set_major_locator(plt.MaxNLocator(5))
@@ -132,41 +132,55 @@ def plot_salience_network(roi_dict, min_val, max_val, atlas_path, output_file):
 
 if __name__ == "__main__":
     low_cr = {
-        'AS_L_Ins': [-0.171617381974146],
-        'AS_L_lobule_VI_crus_I': [0.035358012879239],
-        'AS_L_midFront': [-0.171852181554476],
-        'AS_RL_acc_medPref_sma': [-0.234086435582008],
-        'AS_R_Ins': [-0.172198338547784],
-        'AS_R_lobule_VI_crus_I': [-0.066070453100469],
-        'AS_R_midFront': [-0.16334005153509]
+        'AS_L_Ins': [-0.143247504710141],
+        'AS_L_lobule_VI_crus_I': [-0.012034497346713],
+        'AS_L_midFront': [-0.101147051229879],
+        'AS_RL_acc_medPref_sma': [-0.205194477014672],
+        'AS_R_Ins': [-0.131497558838432],
+        'AS_R_lobule_VI_crus_I': [-0.096921386482409],
+        'AS_R_midFront': [-0.131256527672683]
     }
 
     high_cr = {
-        'AS_L_Ins': [0.346028228415043],
-        'AS_L_lobule_VI_crus_I': [0.228576151997733],
-        'AS_L_midFront': [0.282761040390555],
-        'AS_RL_acc_medPref_sma': [0.42897059934539],
-        'AS_R_Ins': [0.407130229563943],
-        'AS_R_lobule_VI_crus_I': [0.353893197175208],
-        'AS_R_midFront': [0.38074012127959]
+        'AS_L_Ins': [0.001876820015408],
+        'AS_L_lobule_VI_crus_I': [0.011015563282694],
+        'AS_L_midFront': [0.014845294973636],
+        'AS_RL_acc_medPref_sma': [0.105486184459808],
+        'AS_R_Ins': [0.066456359593062],
+        'AS_R_lobule_VI_crus_I': [0.047532963175777],
+        'AS_R_midFront': [0.075332885362378]
     }
+
+    # Calculate the difference between high and low CR groups
+    difference_cr = {}
+    for roi in high_cr.keys():
+        difference_cr[roi] = high_cr[roi][0] - low_cr[roi][0]
+    diff_values = list(difference_cr.values())
 
     # Set atlas path
     atlas_path = "/Users/rachelmorse/Documents/2023:2024/CR & BM Project/Task invariant network/subrois_shirer2012_mod_4d.nii.gz"
     
     plot_salience_network(
         low_cr,
-        -0.429,
-        0.429,
+        -1.75,
+        1.75,
         atlas_path,
         output_file="group_low_cr_surface.png")
     
     plot_salience_network(
         high_cr,
-        -0.429,
-        0.429,
+        -1.75,
+        1.75,
         atlas_path,
         output_file="group_high_cr_surface.png")
+    
+    plot_salience_network(
+        difference_cr,
+        0,
+        0.2,
+        atlas_path,
+        output_file="group_cr_difference_surface.png"
+        )
     
     img_low = Image.open("group_low_cr_surface.png")
     img_high = Image.open("group_high_cr_surface.png")
