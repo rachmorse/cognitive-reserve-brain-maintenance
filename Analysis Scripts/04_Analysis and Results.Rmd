@@ -567,7 +567,7 @@ cr_validation <- get_mixed_effects_stats(scale(memory) ~ scale(adj_HIP_total) * 
 
 __**Analyzing Cognitive Reserve and Brain Maintenance Variables:**__
 
-We established CR and BM variables as illustrated in Figure 3, which plots each participant’s hippocampal and memory annual change—both adjusted for follow-up age—together with their corresponding CR or BM value. Because these trajectories are adjusted for age, individuals whose hippocampus atrophies and memory declines less than expected for their age appear to show increases in both hippocampal volume and memory. This adjustment for age allows the CR and BM variables to consider the faster rate of decline in hippocampal volume and memory observed among our older participants (Supplementary Figure 1). Finally, we examined whether our CR variable moderated the relationship between hippocampal volume and memory in a linear mixed-effects model. We found a significant interaction between hippocampal volume and CR (β = `r round(cr_validation$coef, 3)`, _p_ = `r format_p_value(cr_validation$p_value)`, _p_<sub>FDR</sub> = `r format_p_value(p_value_df[p_value_df$model_name == "cr_validation", "adjusted_p_value"])`, marginal r² = `r round(cr_validation$marginal_r2, 3)`, conditional r² = `r round(cr_validation$conditional_r2, 3)`) on memory. 
+We established CR and BM variables as illustrated in Figure 3, which plots each participant’s hippocampal and memory annual change—both adjusted for age—together with their corresponding CR or BM value. Because these trajectories are adjusted for age, individuals whose hippocampus atrophies and memory declines less than expected for their age appear to show increases in both hippocampal volume and memory. This adjustment for age allows the CR and BM variables to consider the faster rate of decline in hippocampal volume and memory observed among our older participants (Supplementary Figure 1). Finally, we examined whether our CR variable moderated the relationship between hippocampal volume and memory in an LME model. We found a significant interaction between hippocampal volume and our CR measure (β = `r round(cr_validation$coef, 3)`, _p_ = `r format_p_value(cr_validation$p_value)`, _p_<sub>FDR</sub> = `r format_p_value(p_value_df[p_value_df$model_name == "cr_validation", "adjusted_p_value"])`, marginal r² = `r round(cr_validation$marginal_r2, 3)`, conditional r² = `r round(cr_validation$conditional_r2, 3)`) on memory. 
 
 ```{r echo=FALSE, warning=FALSE}
 custom_colors_bm <- c("#E5E483", "#8ac926", "#4CCD99", "#5BBCFF", "#024CAA", "#00224D")
@@ -634,9 +634,9 @@ __Figure 3:__ _Brain Maintenance and Cognitive Reserve Plots_
 ```{r fig2, echo=FALSE, dpi = 400, fig.width=7, fig.height=4, message=FALSE, warning=FALSE}
 combined_crbm
 ```
-<small>A) The association between hippocampus and memory annual change, adjusted for age, depicted with a diagonal line representing the BM line. The color code represents the BM value for a given participant. B) The same association between hippocampus and memory annual change, adjusted for follow-up age, this time depicted with a diagonal line representing the CR line. The color code represents the CR value for a given participant. Abbreviations: CR Cognitive Reserve, BM Brain Maintenance.</small>
+<small>A) The association between hippocampus and memory annual change, adjusted for age, depicted with a diagonal line representing the BM line. The color code represents the BM value for a given participant. B) The same association between hippocampus and memory annual change, adjusted for age, this time depicted with a diagonal line representing the CR line. The color code represents the CR value for a given participant. Abbreviations: CR Cognitive Reserve, BM Brain Maintenance.</small>
 
-We then classified participants as aging CR-like (N = `r cr_pathway`/`r total_participants`) or BM-like (N = `r bm_pathway`/`r total_participants`) based on how closely their hippocampal and memory annual change resembled CR or BM aging patterns (see Methods). Figure 4 distinguishes each individual as aging either CR-like or BM-like, and the color code shows their corresponding CR or BM value, with higher values indicating greater memory stability for their age. The mean BM value for participants aging BM-like was  `r round(mean_bm, 3)` (range = `r round(min_bm, 3)` - `r round(max_bm, 3)`), and the mean CR value for participants aging CR-like was `r round(mean_cr, 3)` (range = `r round(min_cr, 3)` - `r round(max_cr, 3)`). 
+We then classified participants as aging CR-like (N = `r cr_pathway`/`r total_participants`) or BM-like (N = `r bm_pathway`/`r total_participants`) based on how closely their hippocampal and memory annual change resembled CR or BM aging patterns (see Methods). Figure 4 distinguishes each individual as aging either CR-like or BM-like, and the color code shows their corresponding CR or BM value, with higher values indicating greater memory stability for their age. The mean BM value for participants aging BM-like was  `r round(mean_bm, 3)` (range = `r round(min_bm, 3)` - `r round(max_bm, 3)`), and the mean CR value for participants aging CR-like was `r round(mean_cr, 3)` (range = `r round(min_cr, 3)` - `r round(max_cr, 3)`). This similarity in mean values results from residualizing out the effect of age, which effectively re‐centered the CR and BM measures, causing their means to converge. 
 ```{r echo=FALSE, warning=FALSE}
 # Divide data into pathways
 cr_path <- clean_data %>%
@@ -721,7 +721,7 @@ __Figure 4:__ _Brain Maintenance and Cognitive Reserve Pathways_
 index_plot
 ```
 
-An illustration that classifies each participant as aging either BM-like (left panel) or CR-like (right panel). The vertical axis indicates the BM or CR value, which is derived from each individual’s proximity to an ideal BM or CR pattern of hippocampal and memory annual change (see Methods and Figure 1 for details). The color gradient reflects the BM or CR value within each subgroup. Abbreviations: CR Cognitive Reserve, BM Brain Maintenance.  
+An illustration that classifies each participant as aging either BM-like (left panel) or CR-like (right panel). The vertical axis indicates the BM or CR value, which is derived from each individual’s proximity to an ‘ideal’ BM or CR pattern of hippocampal and memory annual change (see Methods and Figure 1 for details). The color gradient reflects the BM or CR value within each subgroup. Abbreviations: CR Cognitive Reserve, BM Brain Maintenance.  
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 # Prep the data for visualization
@@ -901,7 +901,7 @@ Johnson-Neyman plot of how the hippocampal volume-memory relationship changes as
 
 __Figure 6:__ _Cognitive Reserve and Anterior Salience Network Connectivity_
 
-Difference in anterior Salience Network connectivity for high CR and low CR participants among those aging CR-like. Each region’s connectivity was averaged across all timepoints per participant and z-scored before calculating an average for each group. Abbreviations: CR Cognitive Reserve.   
+Difference in anterior Salience Network connectivity for high CR and low CR participants among those aging CR-like. Each region’s connectivity was averaged across all timepoints and z-scored before calculating an average for each group. The influence of MRI scanner/cohort was removed using residuals. Abbreviations: CR Cognitive Reserve.  
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 # Create the table
