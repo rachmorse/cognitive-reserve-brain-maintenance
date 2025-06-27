@@ -51,12 +51,11 @@ Start by considering ICV for the HC measures
 The formula looks like: 
 
 Adjusted (HPC) volume = hc.1 (per participant) - b.1 (from the whole cohort) * (icv.1 (per participant) - mean_icv (from the whole cohort))
-Adjusted (HPC) volume = hc.2 - b.2 * (icv.1 (because it does not change from tp1) - mean_icv)
 ```{r}
 # Start by making a merged df
 merged_cohorts <- bind_rows(waha_df, cobra_df, betula_df, oslo_df)
 
-# Step 1. Calculate Mean ICV by study and timepoint (e.g. Cobra gets a mean ICV for each timepoint)
+# Step 1. Calculate Mean ICV by study / timepoint 
 mean_icv_by_study_timepoint <- merged_cohorts %>%
   group_by(study) %>%
   summarise(across(starts_with("icv"), mean, na.rm = TRUE))
@@ -180,7 +179,7 @@ process_data <- function(data, n_timepoints, mem_vars) {
     if (sum(!is.na(em_data)) > 1 & sum(!is.na(hc_data)) > 1) {
       data[i, "memory_slopes"] <- lm(em_data[!is.na(em_data)] ~ age[!is.na(em_data)])$coefficients[2]
       data[i, "hc_slopes"] <- lm(hc_data[!is.na(hc_data)] ~ age[!is.na(hc_data)])$coefficients[2]
-      data[i, "mem_time"] <- max(age[!is.na(em_data)]) - min(age[!is.na(em_data)]) # to calculate follow-up time
+      data[i, "mem_time"] <- max(age[!is.na(em_data)]) - min(age[!is.na(em_data)]) # Calculate follow-up time
       data[i, "hc_time"] <- max(age[!is.na(hc_data)]) - min(age[!is.na(hc_data)])
     }
   }
@@ -241,7 +240,7 @@ n_timepoints <- 2
 betula_df <- process_data(betula_df, n_timepoints, memory_vars)
 ```
 
-And do the same for the Waha cohort 
+And do the same for the WAHA cohort 
 ```{r}
 waha_df <- merged_cohorts %>%
   filter(study == "waha")
@@ -296,8 +295,6 @@ for (i in 1:6) {
 
 Then create average functional connectivity values for the Anterior Salience Network 
 ```{r}
-var_list <- merged_cohorts[, grepl(paste0("^(AS)_.*\\.(AS)_.*\\.", i, "$"), names(merged_cohorts))]
-
 # Loop the code making the averages over the 6 timepoints for each participant
 for (i in 1:6) {
   # Calculate the average of all RECN and LECN columns and save it as EC
@@ -307,34 +304,22 @@ for (i in 1:6) {
 
 Now calculate the slope for FC annual change
 ```{r}
-compute_fc_slope <- function(data) {
+compute_fc_stats <- function(data) {
   # Calculate slopes
   for (i in 1:nrow(data)) {
     dmn_data <- data[i, c(paste0("dmn.", 1:6))]
-    ec_data <- data[i, c(paste0("ec.", 1:6))]
-    sn_data <- data[i, c(paste0("sn.", 1:6))]
     age <- data[i, c(paste0("age.", 1:6))]
     data[i, "fc_obs"] <- sum(!is.na(dmn_data))
 
     if (sum(!is.na(dmn_data)) > 1) {
       data[i, "fc_time"] <- max(age[!is.na(dmn_data)]) - min(age[!is.na(dmn_data)])
-
-      if (sum(!is.na(dmn_data)) > 1) {
-        data[i, "dmn_slopes"] <- lm(dmn_data[!is.na(dmn_data)] ~ age[!is.na(dmn_data)])$coeff[2]
-      }
-      if (sum(!is.na(ec_data)) > 1) {
-        data[i, "ec_slopes"] <- lm(ec_data[!is.na(ec_data)] ~ age[!is.na(ec_data)])$coeff[2]
-      }
-      if (sum(!is.na(sn_data)) > 1) {
-        data[i, "sn_slopes"] <- lm(sn_data[!is.na(sn_data)] ~ age[!is.na(sn_data)])$coeff[2]
       }
     }
-  }
   data <- data %>% ungroup()
   return(data)
 }
 
-merged_cohorts <- compute_fc_slope(merged_cohorts)
+merged_cohorts <- compute_fc_stats(merged_cohorts)
 ```
 
 Then clean a main dataframe for fc
@@ -343,7 +328,6 @@ Then clean a main dataframe for fc
 clean_data <- select(
   merged_cohorts,
   id, study, sex, edu, mmse, cohort,
-  dmn_slopes, ec_slopes, sn_slopes,
   memory_slopes, hc_slopes,
   em_obs, hc_obs, fc_obs,
   mem_time, hc_time, fc_time,
@@ -357,18 +341,12 @@ clean_data <- select(
   paste0("dmn.", 1:6)
 )
 
-merg_filt <- merged_cohorts %>%
-  filter(cohort == "Cobra") %>%
-  select(id, memory_slopes, hc_slopes, dmn_slopes)
-
 # Drop people who are missing all necessary data
-
 clean_data <- clean_data %>%
-  filter(!(is.na(memory_slopes) & is.na(hc_slopes) & is.na(dmn_slopes))) %>% # Assumes that if they are missing one FC slope -> missing all
+  filter(!(is.na(memory_slopes) & is.na(hc_slopes))) %>% 
   filter(em_obs >= 2, hc_obs >= 2) # Assumes that they need to have at least two EM and two HC observations for analyses
 
 # Drop people who have a FU time of less than 1.5 years
-
 clean_data <- clean_data %>%
   filter(mem_time > 1.5)
 ```
@@ -380,7 +358,7 @@ Note that this needs to be used carefully and any code comparing BL and FU value
 # Function to create baseline and followup columns dynamically
 create_bl_fu_columns <- function(data) {
   # Variables/Patterns to process
-  variables <- c("dmn", "ec", "sn", "adj_HIP_total", "memory", "age")
+  variables <- c("adj_HIP_total", "memory", "age")
 
   # Create new columns
   for (var in variables) {
@@ -425,8 +403,8 @@ clean_data <- clean_data %>%
   create_bl_fu_columns()
 
 # Check that it is working correctly
-dmn_check <- clean_data %>%
-  select(id, matches("^dmn\\.\\d+$"), dmn_baseline, dmn_followup)
+age_check <- clean_data %>%
+  select(id, matches("^age\\.\\d+$"), age_baseline, age_followup)
 ```
 
 ```{r}
