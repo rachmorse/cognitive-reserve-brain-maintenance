@@ -175,7 +175,6 @@ cols_to_rename <- names(waha_df_fc)[grepl("^(AS).*- (AS)", names(waha_df_fc))]
 names(waha_df_fc)[names(waha_df_fc) %in% cols_to_rename] <- gsub(" - ", "-", cols_to_rename)
 
 # Merge WAHA structural and functional dfs into one
-
 waha_df <- merge(waha_df_struct, waha_df_fc, by = c("id", "timepoint"), all = TRUE) # This keeps all participants so need to drop NAs
 
 # Select only the tp 1 MMSE values
@@ -249,7 +248,6 @@ write.csv(waha_df, file = "/tsd/p274/data/durable/projects/p027-cr_bm/Clean Data
 common_vars <- c("sex", "edu", "mmse")
 waha_df <- wide_format(waha_df, 3, common_vars)
 ```
-
 
 Create a clean df for COBRA data
 
@@ -339,7 +337,6 @@ Rename variables and covert to wide format
 write.csv(cobra_df, file = "/tsd/p274/data/durable/projects/p027-cr_bm/Clean Data All Cohorts/Cobra clean raw data.csv")
 
 # Select only the tp 1 MMSE values
-# Please note that MMSE now is only baseline values
 cobra_df <- cobra_df %>%
   group_by(id) %>%
   mutate(across(starts_with("mmse"), ~ if_else(timepoint != 1, .[timepoint == 1], .)))
@@ -493,7 +490,6 @@ betula_df <- betula_df %>%
 write.csv(betula_df, file = "/tsd/p274/data/durable/projects/p027-cr_bm/Clean Data All Cohorts/Betula clean raw data.csv")
 
 # Select only the tp 1 MMSE values
-# Please note that MMSE now is only baseline values
 betula_df <- betula_df %>%
   group_by(id) %>%
   mutate(across(starts_with("mmse"), ~ if_else(timepoint != 1, .[timepoint == 1], .)))
@@ -587,7 +583,7 @@ selected_cols <- c(
   names(betula_func)[grepl("^(AS).*-(AS)", names(betula_func))]
 )
 
-selected_cols <- unique(selected_cols) # because some fc connections are in multiple networks
+selected_cols <- unique(selected_cols) # Because some fc connections are in multiple networks
 oslo_func <- oslo_func[, selected_cols]
 
 oslo_func_scanners <- read_delim("/tsd/p274/data/durable/projects/p027-cr_bm/UiO/results/subs.txt",
@@ -656,7 +652,6 @@ oslo_df <- oslo_df %>%
 write.csv(oslo_df, file = "/tsd/p274/data/durable/projects/p027-cr_bm/Clean Data All Cohorts/Oslo clean raw data.csv")
 
 # Select only the tp 1 MMSE values
-# Please note that MMSE now is only baseline values
 oslo_df <- oslo_df %>%
   group_by(id) %>%
   mutate(mmse = first(mmse))
@@ -678,7 +673,6 @@ Now define the baseline values for all participants. This code chooses the first
 get_first_non_na <- function(x) {
   return(x[which(!is.na(x))[1]])
 }
-# This only needs to be applied to the cohorts with more than 2 timepoints of data. It is already defined for the other cohorts
 
 # Apply the function to each row
 oslo_df$CVLT_A_Total_baseline <- apply(oslo_df[, c(paste0("CVLT_A_Total.", 1:6))], 1, get_first_non_na)
@@ -698,7 +692,6 @@ cobra_df$EM_numerical_baseline <- apply(cobra_df[, c(paste0("EM_numerical.", 1:2
 cobra_df$EM_figural_baseline <- apply(cobra_df[, c(paste0("EM_figural.", 1:2))], 1, get_first_non_na)
 cobra_df$EM_verbal_baseline <- apply(cobra_df[, c(paste0("EM_verbal.", 1:2))], 1, get_first_non_na)
 ```
-
 
 Now find the hippocampus and age baseline values
 ```{r warning=FALSE}
@@ -859,7 +852,6 @@ cobra_df <- cleaned_data %>%
 ``` 
 
 Write new CSVs with no outliers
-
 ```{r}
 write.csv(betula_df, file = "/tsd/p274/data/durable/projects/p027-cr_bm/Clean Data All Cohorts/Wide Format/Betula no outliers data wide.csv")
 
