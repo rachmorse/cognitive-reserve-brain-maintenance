@@ -1,9 +1,9 @@
 ---
 title: "Results"
 output:
-  word_document: default
   html_document:
     df_print: paged
+  word_document: default
 ---
 
 ```{r setup, include=FALSE}
@@ -327,7 +327,20 @@ emhp_merged_unscaled <- get_regression_stats(memory_slopes ~ hc_slopes + study +
 model_baseline <- get_regression_stats(scale(memory_baseline) ~ scale(adj_HIP_total_baseline) + study + scale(age_baseline) + scale(edu) + sex, data = clean_data, hc_vars)
 
 # Cross-sectional analysis at follow-up
-model_followup <- get_regression_stats(scale(memory_followup) ~ scale(adj_HIP_total_followup) + study + scale(age_followup) + scale(edu), data = clean_data, hc_vars)
+# In order to make sure that the follow-up hc and memory values are from the same timepoint (eg because someone has more memory obs than hc obs), filter for participants to only those with values from the same timepoint
+clean_data_followup <- clean_data %>%
+  rowwise() %>%
+  # Find which memory.x column equals memory_followup etc.
+  mutate(
+    memory_idx = match(memory_followup, c_across(starts_with("memory."))),   
+    hc_idx     = match(adj_HIP_total_followup,     c_across(starts_with("adj_HIP_total."))), 
+    age_idx    = match(age_followup,    c_across(starts_with("age.")))       
+  ) %>%
+  ungroup() %>%
+  # Only keep rows where the matched memory.x, hc.x, and age.x column indices are the same
+  filter(memory_idx == hc_idx, memory_idx == age_idx)
+
+model_followup <- get_regression_stats(scale(memory_followup) ~ scale(adj_HIP_total_followup) + study + scale(age_followup) + scale(edu), data = clean_data_followup, hc_vars)
 ```
 
 Hippocampus and memory annual change were significantly correlated (β = `r round(emhp_merged$coef, 3)`, _p_ = `r format_p_value(emhp_merged$p_value)`, _p_<sub>FDR</sub> = `r format_p_value(p_value_df[p_value_df$model_name == "emhp_merged", "adjusted_p_value"])`, r² = `r round(emhp_merged$r2, 3)`) (Figure 2). Cross-sectionally, hippocampal volume and memory were not significantly correlated at baseline (_p_ = `r format_p_value(model_baseline$p_value)`, _p_<sub>FDR</sub> = `r format_p_value(p_value_df[p_value_df$model_name == "model_baseline", "adjusted_p_value"])`) but were significantly correlated at follow-up (β = `r round(model_followup$coef, 3)`, _p_ = `r format_p_value(model_followup$p_value)`, _p_<sub>FDR</sub> = `r format_p_value(p_value_df[p_value_df$model_name == "model_followup", "adjusted_p_value"])`, r² = `r round(model_followup$r2, 3)`). These results are summarized in Table 4. 
@@ -336,7 +349,7 @@ Hippocampus and memory annual change were significantly correlated (β = `r roun
 # 1) Fit the lm model
 lm_mem_hc_study <- lm(memory_slopes ~ hc_slopes + study + age_baseline + mem_time + sex + edu, data = clean_data)
 
-## 2) Create a reference grid over a range of hc_slopes
+# 2) Create a reference grid over a range of hc_slopes
 rg_mem_hc <- ref_grid(
   lm_mem_hc_study,
   at = list(hc_slopes = seq(
@@ -344,14 +357,13 @@ rg_mem_hc <- ref_grid(
     to = max(clean_data$hc_slopes),
     length.out = 50
   )),
-  # The next line averages across "study" by default
 )
 
-## 3) Get the predicted means for that grid
+# 3) Get the predicted means for that grid
 em_means_mem_hc <- emmeans(rg_mem_hc, ~hc_slopes)
 em_df_mem_hc <- as.data.frame(em_means_mem_hc)
 
-## 4) Plot the “average” slope with confidence bands
+# 4) Plot the average slope with confidence bands
 mem_hc_plot <- ggplot(em_df_mem_hc, aes(x = hc_slopes, y = emmean)) +
   geom_point(
     data = clean_data,
@@ -458,9 +470,6 @@ mean_cr <- mean(clean_data$reverse_cr, na.rm = TRUE)
 min_cr <- min(clean_data$reverse_cr, na.rm = TRUE)
 max_cr <- max(clean_data$reverse_cr, na.rm = TRUE)
 
-# Classify participants into CR and BM pathways based on some criteria
-# (Replace with actual classification logic if different)
-
 # Divide data into pathways
 cr_pathway <- clean_data %>%
   filter(pathway == "CR Pathway") %>%
@@ -469,19 +478,6 @@ bm_pathway <- clean_data %>%
   filter(pathway == "BM Pathway") %>%
   nrow()
 total_participants <- nrow(clean_data)
-
-# Run analyses for validating the CR variable as a measure of CR
-cr_var <- c(
-  "scale(hc_slopes):scale(reverse_cr)"
-)
-
-bm_var <- c(
-  "scale(reverse_bm)"
-)
-
-int_var <- c(
-  "scale(hc_slopes):factor(pathway)CR Pathway"
-)
 ```
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
@@ -490,12 +486,6 @@ int_var <- c(
 # Remove unneeded columns before creating long df
 clean_data <- clean_data %>% 
   select(-X, -X.1)
-
-# Make a time variable
-clean_data <- clean_data %>%
-  rowwise() %>%
-  mutate(time = mean(c(mem_time, hc_time, fc_time), na.rm = TRUE)) %>%
-  ungroup()
 
 # Pivot data from wide to long
 long_clean_data <- clean_data %>%
@@ -561,7 +551,7 @@ cr_int_var <- c(
   "scale(adj_HIP_total):scale(reverse_cr)"
 )
 
-# Running sensitivity analyses
+# Run sensitivity analyses
 cr_validation <- get_mixed_effects_stats(scale(memory) ~ scale(adj_HIP_total) * scale(reverse_cr) + (1|id) + study + scale(age_baseline) + scale(mem_time) + sex + scale(edu), data = long_clean_data, cr_int_var)
 ```
 
@@ -638,15 +628,15 @@ combined_crbm
 
 We then classified participants as aging CR-like (N = `r cr_pathway`/`r total_participants`) or BM-like (N = `r bm_pathway`/`r total_participants`) based on how closely their hippocampal and memory annual change resembled CR or BM aging patterns (see Methods). Figure 4 distinguishes each individual as aging either CR-like or BM-like, and the color code shows their corresponding CR or BM value, with higher values indicating greater memory stability for their age. The mean BM value for participants aging BM-like was  `r round(mean_bm, 3)` (range = `r round(min_bm, 3)` - `r round(max_bm, 3)`), and the mean CR value for participants aging CR-like was `r round(mean_cr, 3)` (range = `r round(min_cr, 3)` - `r round(max_cr, 3)`). This similarity in mean values results from residualizing out the effect of age, which effectively re‐centered the CR and BM measures, causing their means to converge. 
 ```{r echo=FALSE, warning=FALSE}
-# Divide data into pathways
-cr_path <- clean_data %>%
-  filter(pathway == "CR Pathway")
+# Create df with groups 
+cr_pathway <- clean_data %>%
+  filter(pathway == "CR Pathway") 
 
-bm_path <- clean_data %>%
-  filter(pathway == "BM Pathway")
+bm_pathway <- clean_data %>%
+  filter(pathway == "BM Pathway") 
 
 # Plot the CR half
-cr_path_plot <- ggplot(cr_path, aes(pathway, reverse_cr, color = reverse_cr, fill = reverse_cr)) +
+cr_path_plot <- ggplot(cr_pathway, aes(pathway, reverse_cr, color = reverse_cr, fill = reverse_cr)) +
   geom_quasirandom(size = 4, alpha = 0.7) +
   scale_color_gradientn(
     colors = c("#f5d7b0", "#f5be27", "#fa8d00", "#bc507f", "#7E1891", "#1c0159"),
@@ -678,7 +668,7 @@ cr_path_plot <- ggplot(cr_path, aes(pathway, reverse_cr, color = reverse_cr, fil
   guides(color = "none", fill = guide_colorbar(title = "Cognitive Reserve"))
 
 # Plot the BM half
-bm_path_plot <- ggplot(bm_path, aes(pathway, reverse_bm, color = reverse_bm, fill = reverse_bm)) +
+bm_path_plot <- ggplot(bm_pathway, aes(pathway, reverse_bm, color = reverse_bm, fill = reverse_bm)) +
   geom_quasirandom(size = 4, alpha = 0.7) +
   scale_color_gradientn(
     colors = c("#E5E483", "#8ac926", "#4CCD99", "#5BBCFF", "#024CAA", "#00224D"),
@@ -724,60 +714,8 @@ index_plot
 An illustration that classifies each participant as aging either BM-like (left panel) or CR-like (right panel). The vertical axis indicates the BM or CR value, which is derived from each individual’s proximity to an ‘ideal’ BM or CR pattern of hippocampal and memory annual change (see Methods and Figure 1 for details). The color gradient reflects the BM or CR value within each subgroup. Abbreviations: CR Cognitive Reserve, BM Brain Maintenance.  
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
-# Prep the data for visualization
-
-# Create groups of high and low
-cr_path$reverse_cr_group <- cut(cr_path$reverse_cr,
-  breaks = quantile(cr_path$reverse_cr, probs = seq(0, 1, (1 / 2)), na.rm = TRUE),
-  include.lowest = TRUE,
-  labels = c("Low CR", "High CR")
-)
-
-# And for BM
-bm_path$reverse_bm_group <- cut(bm_path$reverse_bm,
-  breaks = quantile(bm_path$reverse_bm, probs = seq(0, 1, (1 / 2)), na.rm = TRUE),
-  include.lowest = TRUE,
-  labels = c("Low BM", "High BM")
-)
-
-# Convert df to long
-long_data_vis_cr <- cr_path %>%
-  pivot_longer(
-    cols = matches("^memory\\.\\d$|^age\\.\\d$|^adj_HIP_total\\.\\d$"),
-    names_to = c(".value", "timepoint"),
-    names_pattern = "(.*)(\\d$)"
-  )
-
-long_data_vis_bm <- bm_path %>%
-  pivot_longer(
-    cols = matches("^memory\\.\\d$|^age\\.\\d$|^adj_HIP_total\\.\\d$"),
-    names_to = c(".value", "timepoint"),
-    names_pattern = "(.*)(\\d$)"
-  )
-
-long_data_vis_cr <- long_data_vis_cr %>%
-  rename(
-    age = "age.",
-    adj_HIP_total = "adj_HIP_total.",
-    memory = "memory."
-  ) %>%
-  filter(!is.na(age) & !is.na(memory))
-
-long_data_vis_bm <- long_data_vis_bm %>%
-  rename(
-    age = "age.",
-    adj_HIP_total = "adj_HIP_total.",
-    memory = "memory."
-  ) %>%
-  filter(!is.na(age) & !is.na(memory))
-```
-
-```{r echo=FALSE, message=FALSE, warning=FALSE}
 long_clean_data_edu_mem_hc <- long_clean_data %>%
   filter(!is.na(memory) & !is.na(edu) & !is.na(hc_slopes))
-
-cr_pathway <- clean_data %>%
-  filter(pathway == "CR Pathway")
 
 # Education and CR
 vars <- c(
@@ -839,7 +777,7 @@ priority_var_int_cr <- c(
 
 # Filter to those with the right data
 long_clean_data_fc <- long_clean_data %>%
-  filter(!is.na(sn_slopes))
+  filter(fc_obs >= 2)
 
 # Filter to those aging CR-like
 long_cr_pathway_fc <- long_clean_data_fc %>%
@@ -901,7 +839,7 @@ Johnson-Neyman plot of how the hippocampal volume-memory relationship changes as
 
 __Figure 6:__ _Cognitive Reserve and Anterior Salience Network Connectivity_
 
-Difference in anterior Salience Network connectivity for high CR and low CR participants among those aging CR-like. Each region’s connectivity was averaged across all timepoints and z-scored before calculating an average for each group. The influence of MRI scanner/cohort was removed using residuals. Abbreviations: CR Cognitive Reserve.  
+Difference in anterior SN connectivity with participants aging CR-like divided into high CR and low CR groups for visualization. For each region, connectivity was averaged across timepoints, scaled, and averaged by group. The influence of MRI scanner/cohort was removed using residuals, and the resulting low CR anterior SN connectivity values were subtracted from the high CR values. High CR participants had higher anterior SN connectivity in all regions. Abbreviations: CR Cognitive Reserve, SN Salience Network.     
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 # Create the table
@@ -1199,17 +1137,6 @@ Note. Models are adjusted for cohort/MRI scanner. _p_-values are adjusted for mu
 
 __Supplementary Figure 1__: _Memory and Hippocampus Volume Change with Age_
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
-# Extract residuals
-long_clean_data <- long_clean_data %>%
-  filter(!is.na(age) & !is.na(memory) & !is.na(adj_HIP_total))
-
-residual_model_age <- lm(age ~ study, data = long_clean_data)
-residual_model_mem <- lm(memory ~ study, data = long_clean_data)
-residual_model_hc <- lm(adj_HIP_total ~ study, data = long_clean_data)
-long_clean_data$res_age <- residuals(residual_model_age)
-long_clean_data$res_mem <- residuals(residual_model_mem)
-long_clean_data$res_hc <- residuals(residual_model_hc)
-
 # Define colors
 color_palette <- c("indianred2", "steelblue2", "#86db49", "#F7CA18", "blue", "black")
 
@@ -1265,21 +1192,13 @@ cohort_comp <- list(
 )
 
 # Memory, Hippocampus and Analyses
-memory_hippocampus_edu_models <- list(
-  emhp_merged, model_baseline, model_followup
-)
+memory_hippocampus_edu_models <- list(emhp_merged, model_baseline, model_followup)
 
 # Education and CR/BM Analyses
-education_cr_models <- list(
-  edu_cr,
-  edu_cr_int, 
-  edu_mem
-)
+education_cr_models <- list(edu_cr, edu_cr_int, edu_mem)
 
 # CR and BM Sensitivity Analyses
-cr_sensitivity_models <- list(
-  cr_validation
-)
+cr_sensitivity_models <- list(cr_validation)
 
 # ECN and CR Analyses Longitudinal
 fc_long_cr_ecn <- list(cr_ecn_stats, cr_ec, cr_ec_mem)
@@ -1291,17 +1210,13 @@ fc_long_cr_dmn <- list(cr_dmn_stats, cr_dmn, cr_dmn_mem)
 fc_long_cr_sn <- list(cr_sn_stats, cr_sn, cr_sn_mem)
 
 # Duplicate the GAMMs to get separate p-values
-gamm_memory_lft <- gamm_compare_em_memory %>%
-  select(p_value_lrt)
+gamm_memory_lft <- gamm_compare_em_memory %>% select(p_value_lrt)
 
-gamm_memory_gamm <- gamm_compare_em_memory %>%
-  select(p_value_gamm)
+gamm_memory_gamm <- gamm_compare_em_memory %>% select(p_value_gamm)
 
-gamm_hc_lft <- gamm_compare_em_adj_hc %>%
-  select(p_value_lrt)
+gamm_hc_lft <- gamm_compare_em_adj_hc %>% select(p_value_lrt)
 
-gamm_hc_gamm <- gamm_compare_em_adj_hc %>%
-  select(p_value_gamm)
+gamm_hc_gamm <- gamm_compare_em_adj_hc %>% select(p_value_gamm)
 
 # Model Comparisons and General Analyses
 model_comp_general_models <- list(
