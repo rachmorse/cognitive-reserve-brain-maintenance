@@ -86,7 +86,7 @@ resid_vars <- grep("_resid$", names(df_wide), value = TRUE)
 df_wide <- df_wide %>%
   select(id, all_of(resid_vars))
 
-# Scale the averages 
+# Scale the averages
 exclude_cols <- c("id")
 cols_to_transform <- setdiff(names(df_wide), exclude_cols)
 df_wide[cols_to_transform] <- scale(df_wide[cols_to_transform])
@@ -127,18 +127,4 @@ df_summary <- image_data %>%
     .groups = "drop"
   )
 
-write.csv(df_summary, file = "/tsd/p274/home/p274-rachelm/Desktop/cr_average.csv")
-
-# Find the 5th to 95th to set range for figure
-quantiles_df <- df_wide %>%
-  select(-id) %>%
-  summarize(across(
-    .cols = everything(),
-    .fns = list(
-      p5 = ~ quantile(.x, 0.05, na.rm = TRUE),
-      p95 = ~ quantile(.x, 0.95, na.rm = TRUE)
-    )
-  ))
-
-max <- max(as.matrix(abs(quantiles_df)), na.rm = TRUE)
-print(max)
+write.csv(df_summary, file = "/tsd/p274/home/p274-rachelm/Documents/cr_average.csv")
