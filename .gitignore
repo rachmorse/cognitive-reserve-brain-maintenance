@@ -1,6 +1,6 @@
 # Ignore
-Fisher z-transformation.R
-Format scripts.R
+fisher_z_transformation.R
+format_scripts.R
 fig 1 code.R
 Fig 1.jpeg
 *.png
