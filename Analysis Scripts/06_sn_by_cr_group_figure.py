@@ -161,53 +161,9 @@ if __name__ == "__main__":
     atlas_path = "/Users/rachelmorse/Documents/2023:2024/CR & BM Project/Task invariant network/subrois_shirer2012_mod_4d.nii.gz"
     
     plot_salience_network(
-        low_cr,
-        -1.75,
-        1.75,
-        atlas_path,
-        output_file="group_low_cr_surface.png")
-    
-    plot_salience_network(
-        high_cr,
-        -1.75,
-        1.75,
-        atlas_path,
-        output_file="group_high_cr_surface.png")
-    
-    plot_salience_network(
         difference_cr,
         0,
         0.2,
         atlas_path,
-        output_file="group_cr_difference_surface.png"
+        output_file="high_vs_low_cr_difference_surface.png"
         )
-    
-    img_low = Image.open("group_low_cr_surface.png")
-    img_high = Image.open("group_high_cr_surface.png")
-
-    # Set crop margins (pixels to remove from top and bottom)
-    crop_top = 50
-    crop_bottom = 50
-
-    # Crop img_low
-    width, height = img_low.size
-    img_low = img_low.crop((0, crop_top, width, height - crop_bottom))
-
-    # Crop img_high
-    width, height = img_high.size
-    img_high = img_high.crop((0, crop_top, width, height - crop_bottom))
-
-    fig, axs = plt.subplots(2, 1, figsize=(8, 4))
-
-    axs[0].imshow(img_high)
-    axs[0].axis('off')
-    axs[0].text(10, 50, "High CR Group", color='black', fontsize=10, va='top', ha='left')
-
-    axs[1].imshow(img_low)
-    axs[1].axis('off')
-    axs[1].text(10, 50, "Low CR Group", color='black', fontsize=10, va='top', ha='left')
-
-    plt.tight_layout()
-    plt.subplots_adjust(wspace=-0.07, hspace=-0.15)
-    plt.savefig("high_vs_low_cr_sn_plot.png", bbox_inches='tight', dpi=400, pad_inches=0)
-    plt.close()
