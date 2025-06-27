@@ -27,7 +27,7 @@ Start by reading in the clean data in wide format
 clean_data <- read.csv("/tsd/p274/data/durable/projects/p027-cr_bm/Clean Data All Cohorts/Wide Format/Merged cohorts analysed data wide.csv")
 ```
 
-Visualize the HC and memory data
+Visualize the HC and memory data and check for normality 
 ```{r warning=FALSE}
 # Look at memory slopes
 ggplot(clean_data, aes(x = memory_slopes)) +
@@ -42,17 +42,10 @@ ggplot(clean_data, aes(x = hc_slopes)) +
 
 hc_normality <- shapiro.test(clean_data$hc_slopes)
 print(hc_normality)
-
-# Visualize the FC data
-ggplot(clean_data, aes(x = dmn_slopes)) +
-  geom_histogram()
-
-dmn_normality <- shapiro.test(clean_data$dmn_slopes)
-print(dmn_normality)
 ```
-Fit residual models to be able to use in the figures throughout the results section
+Fit residual models to use in creating the CR/BM variable
 ```{r}
-# In order to be able to save these models, the NAs have to be removed so I made a df for each type to remove the data and then can merge back into clean_df
+# In order to be able to save these models, the NAs have to be removed 
 
 # Create a memory-residual df
 mem_res_data <- clean_data %>%
@@ -144,7 +137,6 @@ distance_to_cr_point <- function(y, x) {
   return(distance)
 }
 
-
 emhc_data <- emhc_data %>%
   mutate(dist_to_cr_point = distance_to_cr_point(res_mem_slopes_scaled, res_hc_slopes_scaled))
 
@@ -163,7 +155,6 @@ distance_to_cr_line <- function(y, x) {
 emhc_data <- emhc_data %>%
   mutate(dist_to_cr_line = distance_to_cr_line(res_mem_slopes_scaled, res_hc_slopes_scaled))
 
-
 emhc_data <- emhc_data %>%
   mutate(dist_to_double_cr = dist_to_cr_line + dist_to_cr_point)
 ```
@@ -176,7 +167,7 @@ ggplot(emhc_data, aes(x = dist_to_double_cr)) +
   geom_histogram(fill = "lightpink", color = "black", binwidth = 0.1)
 ```
 
-Now inverse BM and CR so that high values are good
+Now inverse BM and CR so that high values = high CR/BM
 ```{r}
 # Define function to reverse the CR / BM variables using their possible min and max values
 reverse_values <- function(values) {
