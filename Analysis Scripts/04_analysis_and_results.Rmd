@@ -1264,3 +1264,147 @@ p_value_df <- rbind(
 write.csv(p_value_df, file = "/tsd/p274/data/durable/projects/p027-cr_bm/p_value.csv")
 ```
 
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+library(rlang)
+
+raw_barplot_by_cohort <- function(df, values, cohort = cohort, id = NULL,
+                                  title = NULL, ylab = "Raw score", ncol = 1) {
+  cohort <- enquo(cohort)
+  id_quo <- enquo(id)
+  value_names <- tidyselect::eval_select(enquo(values), df) |> names()
+
+  # Build an ID if one isn't provided
+  d <- df
+  if (quo_is_null(id_quo) || as_label(id_quo) == "NULL") {
+    d <- d %>% group_by(!!cohort) %>% mutate(.id = row_number()) %>% ungroup()
+  } else {
+    d <- d %>% mutate(.id = !!id_quo)
+  }
+
+  # Long format; order bars by cohort so colors group together
+  long <- d %>%
+    select(all_of(value_names), !!cohort, .id) %>%
+    pivot_longer(all_of(value_names), names_to = "measure", values_to = "value") %>%
+    filter(!is.na(value)) %>%
+    group_by(measure) %>%
+    arrange(!!cohort, .id, .by_group = TRUE) %>%
+    mutate(.x = factor(row_number())) %>%
+    ungroup()
+
+  # Where to draw separators between cohorts (per facet)
+  sep <- long %>%
+    count(measure, !!cohort, name = "n") %>%
+    group_by(measure) %>%
+    mutate(cum = cumsum(n)) %>%
+    filter(row_number() < n()) %>%
+    ungroup()
+
+  p <- ggplot(long, aes(x = .x, y = value, fill = !!cohort)) +
+    geom_col(width = 0.9) +
+    facet_wrap(~ measure, ncol = ncol, scales = "free_y") +
+    labs(title = title, x = NULL, y = ylab, fill = "Cohort") +
+    theme_minimal(base_size = 12) +
+    theme(
+      legend.position = "top",
+      axis.text.x = element_blank(),       # hide cluttered IDs
+      panel.grid.major.x = element_blank(),
+      strip.text = element_text(face = "bold")
+    )
+
+  if (nrow(sep) > 0) {
+    p <- p + geom_vline(
+      data = sep,
+      aes(xintercept = cum + 0.5),
+      linetype = "dashed", linewidth = 0.3, inherit.aes = FALSE
+    )
+  }
+
+  p
+}
+
+# 1) Raw bars for memory_slopes (one bar per participant, colored by cohort)
+p1 <- raw_barplot_by_cohort(
+  clean_data,
+  values = memory_slopes,
+  cohort = cohort,          # change if your cohort col is named differently
+  id     = id,      # optional; omit if you don't have an ID column
+  title  = "Raw memory_slopes by participant (colored by cohort)"
+)
+p1
+
+# 2) Raw bars for memory_1 and memory_2 (two facets, same cohort colors)
+p2 <- raw_barplot_by_cohort(
+  clean_data,
+  values = c(memory_baseline, memory_followup),
+  cohort = cohort,
+  id     = id,      # optional
+  title  = "Raw Memory at tp1 and tp2 by participant",
+  ylab   = "Raw memory score",
+  ncol   = 1                # stack facets vertically; use 2 for side-by-side
+)
+p2
+```
+
+Supplementary Figure on cohort distribution of episodic memory scores.
+```{r}
+# Function to plot the memory scores by cohort
+plot_memory_all_tps <- function(df, cohort, tps) {
+  cohort <- enquo(cohort)
+  tp_names <- tidyselect::eval_select(enquo(tps), df) |> names()
+
+  long_tp <- df %>%
+    select(!!cohort, all_of(tp_names)) %>%
+    pivot_longer(all_of(tp_names), names_to = "timepoint", values_to = "score") %>%
+    filter(!is.na(score)) %>%
+    mutate(timepoint = dplyr::recode(timepoint,
+                                     "memory.1" = "Timepoint 1",
+                                     "memory.2" = "Timepoint 2",
+                                     "memory.3" = "Timepoint 3",
+                                     "memory.4" = "Timepoint 4",
+                                     "memory.5" = "Timepoint 5",
+                                     "memory.6" = "Timepoint 6"))
+  long_tp <- long_tp %>%
+    mutate(!!quo_name(cohort) := forcats::fct_recode(
+      !!cohort,
+      "Barcelona WAHA" = "WAHA",
+      "Oslo LCBC"      = "Oslo",
+      "Umea Betula"    = "Betula",
+      "Umea COBRA"     = "Cobra"
+    ))
+
+  p <- ggplot(long_tp, aes(x = !!cohort, y = score, fill = !!cohort)) +
+    geom_violin(trim = FALSE, width = 0.9, alpha = 0.35, color = NA) +     
+    geom_boxplot(width = 0.45, outlier.shape = NA, alpha = 0.9,           
+                 color = "black") +
+    geom_jitter(width = 0.12, alpha = 0.45, size = 1.2) +                  
+    facet_wrap(~ timepoint, ncol = 3, scales = "fixed") +                
+    geom_hline(yintercept = 0, linetype = "dashed", linewidth = 0.3, alpha = 0.8) +
+    labs(x = NULL, y = "Memory Composite", fill = "Cohort") +
+    theme_minimal(base_size = 12) +
+    theme(
+      legend.position = "top",
+      axis.text.x = element_text(angle = 20, hjust = 1),
+      panel.grid.major.x = element_blank()
+    ) +
+    coord_cartesian(ylim = c(-3, 3)) +
+    scale_y_continuous(expand = expansion(mult = c(0.05, 0.1))) +          
+    scale_fill_manual(values = c(
+      "Barcelona WAHA" = "indianred2",
+      "Oslo LCBC"      = "steelblue2",
+      "Umea Betula"    = "#86db49",
+      "Umea COBRA"     = "#F7CA18"
+    )) 
+
+  return(p)
+}
+
+plot_memory_all_tps(
+  clean_data,
+  cohort = cohort,
+  tps    = c(memory.1, memory.2, memory.3, memory.4, memory.5, memory.6)
+)
+```
+
+
