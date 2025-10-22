@@ -300,12 +300,11 @@ def main():
 
     # Now plot BM variants
     variants_BM = [
-        # ("BM original (z-score, max-abs, α=0.5, euclid)", dict(scale='zscore_maxabs', alpha_point=0.5, metric='euclid')),
-        ("BM scale=max-abs only (α=0.5, euclid)",          dict(scale='maxabs',       alpha_point=0.5, metric='euclid')),
-        ("BM α=0.3 (z-score, max-abs, euclid)",           dict(scale='zscore_maxabs', alpha_point=0.3, metric='euclid')),
-        ("BM α=0.7 (z-score, max-abs, euclid)",           dict(scale='zscore_maxabs', alpha_point=0.7, metric='euclid')),
-        ("BM metric=manhattan (α=0.5)",                dict(scale='zscore_maxabs', alpha_point=0.5, metric='manhattan')),
-        ("BM metric=cheby (α=0.5)",                    dict(scale='zscore_maxabs', alpha_point=0.5, metric='cheby')),
+        ("BM scale=max-abs only (α=0.5, Euclidean)",          dict(scale='maxabs',       alpha_point=0.5, metric='euclid')),
+        ("BM α=0.3 (z-score, max-abs, Euclidean)",           dict(scale='zscore_maxabs', alpha_point=0.3, metric='euclid')),
+        ("BM α=0.7 (z-score, max-abs, Euclidean)",           dict(scale='zscore_maxabs', alpha_point=0.7, metric='euclid')),
+        ("BM metric=Manhattan (α=0.5)",                dict(scale='zscore_maxabs', alpha_point=0.5, metric='manhattan')),
+        ("BM metric=Chebyshev (α=0.5)",                    dict(scale='zscore_maxabs', alpha_point=0.5, metric='cheby')),
         ("BM data-based",                               {"_data_based": True})
     ]
 
