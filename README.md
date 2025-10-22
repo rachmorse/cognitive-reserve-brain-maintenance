@@ -6,18 +6,19 @@ This repository contains the analysis scripts for our study on Cognitive Reserve
 
 #### How to create the CR/BM variables
 
-- `making_crbm_variables.Rmd`: This script provides instructions and code for generating the CR and BM variables. It includes data requirements and guidance for generating variables with additional cohort data.
+- `making_crbm_variables.Rmd`: This script provides code for generating the CR and BM variables, including code to simulate example data and visualize the resulting measures.
 
 #### Analysis Scripts
 
 This section includes several scripts used to conduct this study:
 
-- `01_data_cleaning.Rmd`: Cleans and merges data from the Lifebrain cohorts, removes outliers.
-- `02_calculating_annual_change.Rmd`: Calculates adjusted hippocampal volume, average functional connectivity, and annual change variables.
-- `03_descriptive_stats_crbm_variables.Rmd`: Visualizes and conducts descriptive statistics for study variables and creates the CR/BM variables.
+- `data_cleaning.Rmd`: Cleans and merges data from the Lifebrain cohorts, removes outliers.
+- `calculating_annual_change.Rmd`: Calculates adjusted hippocampal volume, average functional connectivity, and annual change variables. Also, takes the residuals of GAMs with hippocampal and memory change and age. 
+- `crbm_vars.py`: Creates the CR/BM variables and visualizes the moderation effect. 
 - `04_analysis_and_results.Rmd`: Contains all primary and supplementary analyses from the study.
 - `05_calculate_avg_sn_by_group.R`: Creates a CSV with average connectivity for each ROI in the Salience Network for low CR and high CR groups across all timepoints.
 - `06_sn_by_cr_group_figure.py`: Generates multi-view brain surface plots from Salience Network connectivity comparing low CR and high CR groups.
+- `sensitivity_analyses.py`: Generates CR and BM measure variations (options: for BM change scaling method, distance calculation method, distance weighting, from theoretical to empirial method; for CR change k, θ). Compares the variations to original measures, and plots each variation.
 
 ## Usage
 
