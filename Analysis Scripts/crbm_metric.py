@@ -102,12 +102,14 @@ ax.add_collection(lc)
 ax.autoscale()
 ax.set_xlabel("Hippocampal Annual Change (age-adjusted)")
 ax.set_ylabel("Memory Annual Change (age-adjusted)")
-ax.set_title("Change in the Memory–Hippocampal Relationship Across Cognitive Reserve")
 cb = plt.colorbar(lc, ax=ax, label='Cognitive Reserve')
 cb.ax.tick_params(labelsize=9)
 ax.grid(alpha=0.3)
 ax.set_facecolor('white')
 plt.tight_layout()
 plt.show()
+
+fig_dir = "/tsd/p274/home/p274-rachelm/Documents/Fig4.png"
+fig.savefig(fig_dir, dpi=300, bbox_inches='tight', facecolor='white')
 
 df_raw.to_csv("/tsd/p274/data/durable/projects/p027-cr_bm/crbm_data.csv", index=False)

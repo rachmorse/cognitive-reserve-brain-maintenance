@@ -1,10 +1,10 @@
 ---
 title: "Results"
 output:
+  word_document: default
+  pdf_document: default
   html_document:
     df_print: paged
-  pdf_document: default
-  word_document: default
 ---
 
 ```{r setup, include=FALSE}
@@ -96,10 +96,11 @@ sd_fu <- sd(clean_data$FU_time, na.rm = TRUE)
 ```{r echo=FALSE}
 # Helper function to format p-values
 format_p_value <- function(p) {
+  p <- as.numeric(p)
   if (p < 0.0001) {
-    return("<0.0001") # Written like this because of HTML formatting
+    "<0.0001"
   } else {
-    return(round(p, 4))
+    format(round(p, 4), scientific = FALSE, trim = TRUE)
   }
 }
 
@@ -293,7 +294,7 @@ knitr::kable(summary_stats, align = "c")
 
 <small>_Note._ Abbreviations: MMSE Mini Mental State Examination, F female, M male, CI Confidence Interval.</small>
 
-We found that as age increased both memory and hippocampus volume decreased, though we also observed inter-individual differences in these relationships (Supplementary Figure 1). Both the LME model and GAMM fit to this data showed evidence of significant relationships between memory and hippocampal volume regressed on age; however, there was evidence of a non-linear relationship in both models (Supplementary Table 1). We include further details in the supplementary materials.
+We found that as age increased both memory and hippocampus volume decreased, though we also observed inter-individual differences in these relationships (Supplementary Figure 2). Both the LME model and GAMM fit to this data showed evidence of significant relationships between memory and hippocampal volume regressed on age; however, there was evidence of a non-linear relationship in both models (Supplementary Table 1). We include further details in the supplementary materials.
 
 __**Episodic Memory and Hippocampus Change:**__ 
 
@@ -366,7 +367,7 @@ clean_data_followup <- clean_data %>%
 model_followup <- get_regression_stats(scale(memory_followup) ~ scale(adj_HIP_total_followup) + study + scale(age_followup) + scale(edu), data = clean_data_followup, hc_vars)
 ```
 
-Hippocampus and memory annual change were significantly correlated (β = `r round(emhp_merged$coef, 4)`, _p_ = `r format_p_value(emhp_merged$p_value)`, _p_<sub>FDR</sub> = `r format_p_value(p_value_df[p_value_df$model_name == "emhp_merged", "adjusted_p_value"])`, r² = `r round(emhp_merged$r2, 4)`) (Figure 2). Cross-sectionally, hippocampal volume and memory were not significantly correlated at baseline (_p_ = `r format_p_value(model_baseline$p_value)`, _p_<sub>FDR</sub> = `r format_p_value(p_value_df[p_value_df$model_name == "model_baseline", "adjusted_p_value"])`) but were significantly correlated at follow-up (β = `r round(model_followup$coef, 4)`, _p_ = `r format_p_value(model_followup$p_value)`, _p_<sub>FDR</sub> = `r format_p_value(p_value_df[p_value_df$model_name == "model_followup", "adjusted_p_value"])`, r² = `r round(model_followup$r2, 4)`). These results are summarized in Table 4. 
+Hippocampus and memory annual change were significantly correlated (β = `r round(emhp_merged$coef, 4)`, 95% CI `r round(emhp_merged$ci[1], 4)` to `r round(emhp_merged$ci[2], 4)`, _p_ = `r format_p_value(emhp_merged$p_value)`, _p_<sub>FDR</sub> = `r format_p_value(p_value_df[p_value_df$model_name == "emhp_merged", "adjusted_p_value"])`, r² = `r round(emhp_merged$r2, 4)`) (Figure 2). Cross-sectionally, hippocampal volume and memory were not significantly correlated at baseline (_p_ = `r format_p_value(model_baseline$p_value)`, _p_<sub>FDR</sub> = `r format_p_value(p_value_df[p_value_df$model_name == "model_baseline", "adjusted_p_value"])`) but were significantly correlated at follow-up (β = `r round(model_followup$coef, 4)`, 95% CI `r round(model_followup$ci[1], 4)` to `r round(model_followup$ci[2], 4)`, _p_ = `r format_p_value(model_followup$p_value)`, _p_<sub>FDR</sub> = `r format_p_value(p_value_df[p_value_df$model_name == "model_followup", "adjusted_p_value"])`, r² = `r round(model_followup$r2, 4)`). These results are summarized in Table 4. 
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 # 1) Fit the lm model
@@ -563,7 +564,7 @@ crbm_corr$p_value <- crbm_corr$p.value
 
 __**Analyzing Cognitive Reserve and Brain Maintenance Variables:**__
 
-We established CR and BM variables as illustrated in Figure 3, which plots each participant’s hippocampal and memory annual change - both adjusted for age - together with their corresponding CR or BM value. Because these trajectories are adjusted for age, individuals whose hippocampus atrophies and memory declines less than expected for their age appear to show increases in both hippocampal volume and memory. This adjustment for age allows the CR and BM variables to consider the faster rate of decline in hippocampal volume and memory observed among our older participants (Supplementary Figure 1).
+We established CR and BM variables as illustrated in Figure 3, which plots each participant’s hippocampal and memory annual change - both non-linearly adjusted for age - together with their corresponding CR or BM value. Because these trajectories are adjusted for age, individuals whose hippocampus atrophies and memory declines less than expected for their age appear to show increases in both hippocampal volume and memory. This adjustment for age allows the CR and BM variables to consider the faster rate of decline in hippocampal volume and memory observed among our older participants (Supplementary Figure 2).
 
 ```{r echo=FALSE, warning=FALSE}
 custom_colors_bm <- c("#E5E483", "#8ac926", "#4CCD99", "#5BBCFF", "#024CAA", "#00224D")
@@ -624,13 +625,13 @@ combined_crbm
 ```
 <small>A) The association between hippocampus and memory annual change, adjusted for age. The color code represents the BM value for a given participant. B) The same association between hippocampus and memory annual change, adjusted for age. The color code represents the CR value for a given participant. Abbreviations: CR Cognitive Reserve, BM Brain Maintenance.</small>
 
-The mean BM value was  `r round(mean_bm, 4)` (range = `r round(min_bm, 4)` - `r round(max_bm, 4)`), and the mean CR value was `r round(mean_cr, 4)` (range = `r round(min_cr, 4)` - `r round(max_cr, 4)`). To visualize how CR moderates the hippocampal-memory relationship, we examined the association between hippocampal and memory change across increasing levels of CR (Figure 4). We divided participants into CR bins and estimating local linear fits within each bin to visualize a continuous moderation effect. The slope of the hippocampal-memory relationship decreased as CR increased, indicating that individuals with higher CR showed weaker coupling between hippocampal decline and memory decline. We found a small positive association between our CR and BM variables (Spearman’s ρ = `r round(crbm_corr$estimate, 4)`, _p_ = `r signif(crbm_corr$p.value, 4)`, _p_<sub>FDR</sub> = `r format_p_value(p_value_df[p_value_df$model_name == "crbm_corr", "adjusted_p_value"])`). Sensitivity analyses showed that alternative formulations of the CR and BM variables were highly correlated with the main definitions (Spearman’s ρ = 0.74–1.00, _ps_ = < 0.0001; Supplementary Table 2, Figure 2). 
+The mean BM value was  `r round(mean_bm, 4)` (range = `r round(min_bm, 4)` - `r round(max_bm, 4)`), and the mean CR value was `r round(mean_cr, 4)` (range = `r round(min_cr, 4)` - `r round(max_cr, 4)`). To visualize how CR moderates the hippocampal-memory relationship, we examined the association between hippocampal and memory change across increasing levels of CR (Figure 4). We divided participants into CR bins and estimating local linear fits within each bin to visualize a continuous moderation effect. The slope of the hippocampal-memory relationship decreased as CR increased, indicating that individuals with higher CR showed weaker coupling between hippocampal decline and memory decline. We found a small positive association between our CR and BM variables (Spearman’s ρ = `r round(crbm_corr$estimate, 4)`, _p_ = `r signif(crbm_corr$p.value, 4)`, _p_<sub>FDR</sub> = `r format_p_value(p_value_df[p_value_df$model_name == "crbm_corr", "adjusted_p_value"])`). Sensitivity analyses showed that alternative formulations of the CR and BM variables were highly correlated with the main definitions (Spearman’s ρ = 0.73-1.00, _ps_ = < 0.0001; Supplementary Table 2, Supplementary Figure 3). 
 
  
 __Figure 4:__ _Change in the Memory–Hippocampal Relationship Across Levels of Cognitive Reserve_
 
 
-The relationship between hippocampal and memory change, both adjusted for age, shown as a function of CR. Data are divided into quantile bins of CR, and a linear fit between hippocampal and memory change for each bin is displayed as a line segment. Line color indicates the mean CR value for each bin. The figure illustrates that the slope of the memory–hippocampal association varies across levels of CR, suggesting that individuals with higher CR show less coupling between hippocampal and memory change.
+The relationship between hippocampal and memory change, both adjusted for age, shown as a function of CR. Data are divided into quantile bins of CR, and a linear fit between hippocampal and memory change for each bin is displayed as a line segment. Line color indicates the mean CR value for each bin. The figure illustrates that the slope of the memory-hippocampal association varies across levels of CR, suggesting that individuals with higher CR show less coupling between hippocampal and memory change.
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 # Education and CR
@@ -661,7 +662,7 @@ edu_cr_hc <- get_mixed_effects_stats(scale(memory) ~ scale(edu) + scale(adj_HIP_
 
 __**Cognitive Reserve, Education, and Functional Connectivity:**__
 
-Longitudinal mixed-effects analyses provided no evidence that education moderated the relationship between hippocampal volume and memory (_p_ = `r format_p_value(edu_cr_int$p_value)`, _p_<sub>FDR</sub> = `r format_p_value(p_value_df[p_value_df$model_name == "edu_cr_int", "adjusted_p_value"])`), nor was there a significant relationship between our CR variable and education (_p_ = `r format_p_value(edu_cr$p_value)`, _p_<sub>FDR</sub> = `r format_p_value(p_value_df[p_value_df$model_name == "edu_cr", "adjusted_p_value"])`) in high CR participants. However, education was significantly correlated with memory (β = `r round(edu_mem$coef, 4)`, _p_ = `r format(format_p_value(edu_mem$p_value), scientific = FALSE)`, _p_<sub>FDR</sub> = `r format_p_value(p_value_df[p_value_df$model_name == "edu_mem", "adjusted_p_value"])`, marginal r² = `r round(edu_mem$marginal_r2, 4)`, conditional r² = `r round(edu_mem$conditional_r2, 4)`), and the correlation remained significant when hippocampal change was included in the model (β = `r round(edu_cr_hc$coef, 4)`, _p_ = `r format(format_p_value(edu_cr_hc$p_value), scientific = FALSE)`, _p_<sub>FDR</sub> = `r format_p_value(p_value_df[p_value_df$model_name == "edu_cr_hc", "adjusted_p_value"])`, marginal r² = `r round(edu_cr_hc$marginal_r2, 4)`, conditional r² = `r round(edu_cr_hc$conditional_r2, 4)`; Table 5). 
+Longitudinal mixed-effects analyses provided no evidence that education moderated the relationship between hippocampal volume and memory (_p_ = `r format_p_value(edu_cr_int$p_value)`, _p_<sub>FDR</sub> = `r format_p_value(p_value_df[p_value_df$model_name == "edu_cr_int", "adjusted_p_value"])`), nor was there a significant relationship between our CR variable and education (_p_ = `r format_p_value(edu_cr$p_value)`, _p_<sub>FDR</sub> = `r format_p_value(p_value_df[p_value_df$model_name == "edu_cr", "adjusted_p_value"])`) in high CR participants. However, education was significantly correlated with memory (β = `r round(edu_mem$coef, 4)`, 95% CI `r round(edu_mem$ci[1], 4)` to `r round(edu_mem$ci[2], 4)`, _p_ = `r format(format_p_value(edu_mem$p_value), scientific = FALSE)`, _p_<sub>FDR</sub> = `r format_p_value(p_value_df[p_value_df$model_name == "edu_mem", "adjusted_p_value"])`, marginal r² = `r round(edu_mem$marginal_r2, 4)`, conditional r² = `r round(edu_mem$conditional_r2, 4)`), and the correlation remained significant when hippocampal change was included in the model (β = `r round(edu_cr_hc$coef, 4)`, 95% CI `r round(edu_cr_hc$ci[1], 4)` to `r round(edu_cr_hc$ci[2], 4)`, _p_ = `r format(format_p_value(edu_cr_hc$p_value), scientific = FALSE)`, _p_<sub>FDR</sub> = `r format_p_value(p_value_df[p_value_df$model_name == "edu_cr_hc", "adjusted_p_value"])`, marginal r² = `r round(edu_cr_hc$marginal_r2, 4)`, conditional r² = `r round(edu_cr_hc$conditional_r2, 4)`). 
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 # Set the priority variables
@@ -707,39 +708,51 @@ cr_sn_mem <- get_mixed_effects_stats(scale(memory) ~ scale(sn) + (1|id) + (1|stu
 ```
 
 
-With functional connectivity, the longitudinal mixed-effects analyses revealed that anterior SN connectivity moderated the relationship between hippocampal volume and memory (β = `r round(cr_sn_stats$coef, 4)`, _p_ = `r format(format_p_value(cr_sn_stats$p_value), scientific = FALSE)`, _p_<sub>FDR</sub> = `r format_p_value(p_value_df[p_value_df$model_name == "cr_sn_stats", "adjusted_p_value"])`, marginal r² = `r round(cr_sn_stats$marginal_r2, 4)`, conditional r² = `r round(cr_sn_stats$conditional_r2, 4)`), such that participants with higher anterior SN connectivity did not have a significant relationship between memory and hippocampal volume. Anterior SN connectivity was also positively correlated with memory (β = `r round(cr_sn_mem$coef, 4)`, _p_ = `r format(format_p_value(cr_sn_mem$p_value), scientific = FALSE)`, _p_<sub>FDR</sub> = `r format_p_value(p_value_df[p_value_df$model_name == "cr_sn_mem", "adjusted_p_value"])`, marginal r² = `r round(cr_sn_mem$marginal_r2, 4)`, conditional r² = `r round(cr_sn_mem$conditional_r2, 4)`), and there was a positive relationship between our CR variable and anterior SN connectivity in high CR participants (β = `r round(cr_sn$coef, 4)`, _p_ = `r format(format_p_value(cr_sn$p_value), scientific = FALSE)`, _p_<sub>FDR</sub> = `r format_p_value(p_value_df[p_value_df$model_name == "cr_sn", "adjusted_p_value"])`, marginal r² = `r round(cr_sn$marginal_r2, 4)`, conditional r² = `r round(cr_sn$conditional_r2, 4)`). There was also evidence that DMN connectivity moderated the hippocampal volume-memory relationship (β = `r round(cr_dmn_stats$coef, 4)`, _p_ = `r format_p_value(cr_dmn_stats$p_value)`, _p_<sub>FDR</sub> = `r format_p_value(p_value_df[p_value_df$model_name == "cr_dmn_stats", "adjusted_p_value"])`, marginal r² = `r round(cr_dmn_stats$marginal_r2, 4)`, conditional r² = `r round(cr_dmn_stats$conditional_r2, 4)`); however, unlike with anterior SN connectivity, when DMN connectivity is high, there is a significant relationship between hippocampal and memory change, such that decreases in hippocampal volume are associated with increases in memory. The moderation analyses are summarized in Figure 5 which depicts how the hippocampal volume-memory relationship increases as anterior SN connectivity decreases, demonstrating a significant positive relationship between memory and hippocampal volume only for participants with anterior SN connectivity less than -0.02SD above the mean. Figure 5 also depicts how the hippocampal volume-memory relationship increases as DMN connectivity decreases; however, in this case, it demonstrates a significant positive relationship between memory and hippocampal volume for participants with DMN connectivity less than 0.08SD above the mean and for participants with DMN connectivity greater than 3.7SD above the mean. This indicates that, among participants with high DMN connectivity, there is a negative hippocampal-memory relationship. Additionally with DMN connectivity, there was no evidence of a relationship between DMN connectivity and memory (_p_ = `r format_p_value(cr_dmn_mem$p_value)`, _p_<sub>FDR</sub> = `r format_p_value(p_value_df[p_value_df$model_name == "cr_dmn_mem", "adjusted_p_value"])`), or of a relationship between our CR variable and DMN connectivity in high CR participants (_p_ = `r format_p_value(cr_dmn$p_value)`, _p_<sub>FDR</sub> = `r format_p_value(p_value_df[p_value_df$model_name == "cr_dmn", "adjusted_p_value"])`).
+With functional connectivity, the longitudinal mixed-effects analyses revealed that anterior SN connectivity moderated the relationship between hippocampal volume and memory (β = `r round(cr_sn_stats$coef, 4)`, 95% CI `r round(cr_sn_stats$ci[1], 4)` to `r round(cr_sn_stats$ci[2], 4)`, _p_ = `r format(format_p_value(cr_sn_stats$p_value), scientific = FALSE)`, _p_<sub>FDR</sub> = `r format_p_value(p_value_df[p_value_df$model_name == "cr_sn_stats", "adjusted_p_value"])`, marginal r² = `r round(cr_sn_stats$marginal_r2, 4)`, conditional r² = `r round(cr_sn_stats$conditional_r2, 4)`), such that participants with higher anterior SN connectivity did not have a significant relationship between memory and hippocampal volume. Anterior SN connectivity was also positively correlated with memory (β = `r round(cr_sn_mem$coef, 4)`, 95% CI `r round(cr_sn_mem$ci[1], 4)` to `r round(cr_sn_mem$ci[2], 4)`, _p_ = `r format(format_p_value(cr_sn_mem$p_value), scientific = FALSE)`, _p_<sub>FDR</sub> = `r format_p_value(p_value_df[p_value_df$model_name == "cr_sn_mem", "adjusted_p_value"])`, marginal r² = `r round(cr_sn_mem$marginal_r2, 4)`, conditional r² = `r round(cr_sn_mem$conditional_r2, 4)`), and there was a positive relationship between our CR variable and anterior SN connectivity in high CR participants (β = `r round(cr_sn$coef, 4)`, 95% CI `r sprintf("%.4f", cr_sn$ci[1])` to `r round(cr_sn$ci[2], 4)`, _p_ = `r format(format_p_value(cr_sn$p_value), scientific = FALSE)`, _p_<sub>FDR</sub> = `r format_p_value(p_value_df[p_value_df$model_name == "cr_sn", "adjusted_p_value"])`, marginal r² = `r round(cr_sn$marginal_r2, 4)`, conditional r² = `r round(cr_sn$conditional_r2, 4)`). This moderation analysis is summarized in Figure 5 which depicts how the hippocampal volume-memory relationship increases as anterior SN connectivity decreases, demonstrating a significant positive relationship between memory and hippocampal volume only for participants with lower anterior SN connectivity. There was also evidence that DMN connectivity moderated the hippocampal volume-memory relationship (β = `r round(cr_dmn_stats$coef, 4)`, 95% CI `r round(cr_dmn_stats$ci[1], 4)` to `r round(cr_dmn_stats$ci[2], 4)`, _p_ = `r format_p_value(cr_dmn_stats$p_value)`, _p_<sub>FDR</sub> = `r format_p_value(p_value_df[p_value_df$model_name == "cr_dmn_stats", "adjusted_p_value"])`, marginal r² = `r round(cr_dmn_stats$marginal_r2, 4)`, conditional r² = `r round(cr_dmn_stats$conditional_r2, 4)`); however, unlike with anterior SN connectivity, when DMN connectivity was high, there was a significant relationship between hippocampal volume and memory, such that decreases in hippocampal volume were associated with increases in memory. Figure 5 depicts how the hippocampal volume-memory relationship increases as DMN connectivity decreases, showing a significant positive relationship between memory and hippocampal volume for participants with lower DMN connectivity and for participants with higher DMN connectivity. This indicates that, among participants with higher DMN connectivity, there is a negative hippocampal-memory relationship. Additionally with DMN connectivity, there was no evidence of a relationship between DMN connectivity and memory (_p_ = `r format_p_value(cr_dmn_mem$p_value)`, _p_<sub>FDR</sub> = `r format_p_value(p_value_df[p_value_df$model_name == "cr_dmn_mem", "adjusted_p_value"])`), or of a relationship between our CR variable and DMN connectivity in high CR participants (_p_ = `r format_p_value(cr_dmn$p_value)`, _p_<sub>FDR</sub> = `r format_p_value(p_value_df[p_value_df$model_name == "cr_dmn", "adjusted_p_value"])`).
 
-With ECN connectivity, there was no evidence that it moderated the relationship between hippocampal volume and memory (_p_ = `r format_p_value(cr_ecn_stats$p_value)`, _p_<sub>FDR</sub> = `r format_p_value(p_value_df[p_value_df$model_name == "cr_ecn_stats", "adjusted_p_value"])`). There was also no evidence of a relationship between ECN connectivity and memory (_p_ = `r format_p_value(cr_ec_mem$p_value)`, _p_<sub>FDR</sub> = `r format_p_value(p_value_df[p_value_df$model_name == "cr_ec_mem", "adjusted_p_value"])`), or of a relationship between our CR variable and ECN connectivity in high CR participants (_p_ = `r format_p_value(cr_ec$p_value)`, _p_<sub>FDR</sub> = `r format_p_value(p_value_df[p_value_df$model_name == "cr_ec", "adjusted_p_value"])`). All functional connectivity results are summarized in Table 5. Figure 6 shows the difference in anterior SN connectivity when comparing low versus high CR groups. 
+With ECN connectivity, there was no evidence of moderating the relationship between hippocampal volume and memory (_p_ = `r format_p_value(cr_ecn_stats$p_value)`, _p_<sub>FDR</sub> = `r format_p_value(p_value_df[p_value_df$model_name == "cr_ecn_stats", "adjusted_p_value"])`). There was also no evidence of a relationship between ECN connectivity and memory (_p_ = `r format_p_value(cr_ec_mem$p_value)`, _p_<sub>FDR</sub> = `r format_p_value(p_value_df[p_value_df$model_name == "cr_ec_mem", "adjusted_p_value"])`), or of a relationship between our CR variable and ECN connectivity in high CR participants (_p_ = `r format_p_value(cr_ec$p_value)`, _p_<sub>FDR</sub> = `r format_p_value(p_value_df[p_value_df$model_name == "cr_ec", "adjusted_p_value"])`). All functional connectivity results are summarized in Table 5. 
 
-```{r echo=FALSE, message=FALSE, warning=FALSE}
+```{r message=FALSE, warning=FALSE, include=FALSE}
 # Fit the model 
-model <- lmer(scale(memory) ~ scale(sn) * scale(adj_HIP_total) + (1|id) + 
+model_sn <- lmer(scale(memory) ~ scale(sn) * scale(adj_HIP_total) + (1|id) + 
               study + age + FU_time + sex + edu, 
               data = long_clean_data)
 
 # Johnson-Neyman plot
-jn_result <- johnson_neyman(model, 
+jn_result_sn <- johnson_neyman(model_sn, 
                            pred = "scale(adj_HIP_total)", 
                            modx = "scale(sn)",
                            plot = TRUE)
-jn_plot <- jn_result$plot  
-jn_plot <- jn_plot + 
-  labs(title = NULL, tag = "A)") +
+jn_plot_sn <- jn_result_sn$plot  
+jn_plot_sn <- jn_plot_sn + 
   xlab("Anterior Salience Network Connectivity") +
   ylab("Effect of Hippocampal Volume on Memory") +
   labs(title = "Johnson-Neyman Plot") +
   theme(plot.caption = element_text(size = 10, hjust = -0.2),
         legend.position = "bottom",
-        plot.tag.position = c(1, 0.01),  # bottom-left
+        plot.tag.position = c(0, 0.01), 
         title = NULL,
         axis.title.x = element_text(size = 11),
-        axis.title.y = element_text(size = 11),
+        axis.title.y = element_text(size = 11),       
         plot.title = element_text(face ="plain", size = 11)
         )
 
-cr_fc <- jn_plot + 
+jn_plot_sn <- jn_plot_sn +
+  theme(
+    axis.title.y = element_text(
+      angle = 90,     
+      hjust = 1.15,  
+      margin = margin(r = 15),
+      size = 11
+    ))
+
+jn_plot_sn <- jn_plot_sn +
+  coord_cartesian(xlim = c(-2.6, 6.5), ylim = c(-1.1, 0.6))
+
+cr_fc_sn <- jn_plot_sn + 
   xlab("Anterior Salience Network Connectivity") +
-  ylab("Effect of Hippocampal Volume on Memory") 
+  ylab("Effect of Hippocampal Volume on Memory") +
+  theme(axis.title.y = element_text(vjust = -3))
 
 # Fit 2nd model 
 model_dmn <- lmer(scale(memory) ~ scale(dmn) * scale(adj_HIP_total) + (1|id) + 
@@ -747,10 +760,27 @@ model_dmn <- lmer(scale(memory) ~ scale(dmn) * scale(adj_HIP_total) + (1|id) +
               data = long_clean_data)
 
 # Johnson-Neyman plot
+jn_result_dmn <- johnson_neyman(model_dmn, 
+                           pred = "scale(adj_HIP_total)", 
+                           modx = "scale(dmn)",
+                           plot = TRUE)
+
 jn_plot_dmn <- jn_result_dmn$plot +
-  labs(title = NULL, tag = "B)") +
   xlab("Default Mode Network Connectivity") +
-  ylab("Effect of Hippocampal Volume on Memory") +
+  ylab(" ") +
+  labs(title = NULL) +
+  theme(
+    legend.position = "bottom",
+    plot.tag.position = c(0.05, 0.05),  # bottom-left
+    plot.tag = element_text(size = 12, face = "bold"),
+    plot.caption = element_text(size = 10, hjust = -0.2),
+    axis.title.x = element_text(size = 11),
+    axis.title.y = element_text(size = 11),
+    plot.title = element_text(face = "plain", size = 11)
+  )
+
+# Remove the significance shading bar manually
+jn_plot_dmn$layers <- jn_plot_dmn$layers[-1]
   theme(
     legend.position = "bottom",
     plot.tag.position = c(0, 0.01),  # bottom-left
@@ -762,27 +792,30 @@ jn_plot_dmn <- jn_result_dmn$plot +
   )
 
 # Remove the significance shading bar manually
-jn_plot_dmn$layers <- jn_plot_dmn$layers[-1]
+jn_plot_dmn <- jn_plot_dmn + theme(legend.position = "none")
+
+jn_plot_dmn <- jn_plot_dmn +
+  guides(fill = "none", alpha = "none", colour = "none", linetype = "none")
+
+jn_plot_dmn <- jn_plot_dmn +
+  coord_cartesian(xlim = c(-2.6, 6.5), ylim = c(-1.1, 0.6))
 
 cr_fc_dmn <- jn_plot_dmn + 
   xlab("Default Mode Network Connectivity") +
-  ylab("Effect of Hippocampal Volume on Memory") 
+  ylab(" ") 
 
 # Combine the plots and collect legend
-cr_fc <- cr_fc + cr_fc_dmn + plot_layout(ncol = 2, guides = "collect") &
+cr_fc <- cr_fc_sn + cr_fc_dmn +
+  plot_layout(nrow = 2, guides = "collect") &
   theme(legend.position = "bottom")
 ```
 
 __Figure 5:__ _Anterior Salience Network Functional Connectivity and the Hippocampal-Memory Relationship_
 
-```{r fig5, echo=FALSE, dpi = 400, fig.width=7, fig.height=5, message=FALSE, warning=FALSE}
+```{r fig5, echo=FALSE, dpi = 400, fig.width=5, fig.height=5, message=FALSE, warning=FALSE}
 cr_fc
 ```
-A) Johnson-Neyman plot of how the hippocampal volume-memory relationship changes as anterior Salience Network connectivity changes. The plot shows that as anterior Salience Network connectivity decreases, the hippocampal volume-memory relationship increases, only becoming significant when Salience Network connectivity is less than -0.02SD above the mean. Above that threshold, the hippocampal volume–memory relationship is not significant. B) The hippocampal volume-memory this time depicted with Default Mode Network connectivity changes. The plot shows that as Default Mode Network connectivity decreases, the hippocampal volume-memory relationship increases. However, this hippocampal-memory relationship is significant for both high and low Default Mode Network connectivity values, only becoming non-significant when Default Mode Network connectivity is between 0.08-3.70SD above the mean. Within that range, the hippocampal volume–memory relationship is not significant. Abbreviations: SN Salience Network, DMN Default Mode Network, n.s. not significant. 
-
-__Figure 6:__ _Cognitive Reserve and Anterior Salience Network Connectivity_
-
-Connectivity differences (high CR vs low CR) within the anterior SN among participants classified as aging CR-like. For each region, connectivity was averaged across sessions, scaled, adjusted for scanner/cohort effects, and expressed as the difference between the high CR and low CR groups; all values are positive, indicating stronger connectivity in the high CR group in all regions. Abbreviations: CR, cognitive reserve; SN, Salience Network.    
+The top panel depicts a Johnson-Neyman plot of how the hippocampal volume-memory relationship changes as anterior Salience Network connectivity changes. The plot shows that as anterior Salience Network connectivity decreases, the hippocampal volume-memory relationship increases, only becoming significant when Salience Network connectivity is less than -0.02SD above the mean. Above that threshold, the hippocampal volume–memory relationship is not significant. The bottom panel shows the hippocampal volume-memory relationship this time depicted with Default Mode Network connectivity changes. The plot shows that as Default Mode Network connectivity decreases, the hippocampal volume-memory relationship increases. However, this hippocampal-memory relationship is significant for both high and low Default Mode Network connectivity values, only becoming non-significant when Default Mode Network connectivity is between 0.08-3.70SD above the mean. Within that range, the hippocampal volume–memory relationship is not significant. Abbreviations: SN Salience Network, DMN Default Mode Network, n.s. not significant. 
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 # Create the table
@@ -791,24 +824,6 @@ long_fc <- data.frame(
     "", "**Memory**",
     "", "", "**Memory**", 
     "", "", "**Cognitive Reserve**"
-  ),
-  "**Education * Hippocampal Volume**" = c(
-    "_Coefficient (95% CI)_",
-    paste0(round(edu_cr_int$coef, 4), " (", round(edu_cr_int$ci[1], 4), " to ", round(edu_cr_int$ci[2], 4), ")"),
-    "**Education**", "_Coefficient (95% CI)_",
-    paste0(round(edu_mem$coef, 4), " (", round(edu_mem$ci[1], 4), " to ", round(edu_mem$ci[2], 4), ")"),
-    "**Education**", "_Coefficient (95% CI)_",
-    paste0(round(edu_cr$coef, 4), " (", round(edu_cr$ci[1], 4), " to ", round(edu_cr$ci[2], 4), ")")
-  ),
-  " " = c(
-    "_Adjusted p-value_", format_p_value(p_value_df[p_value_df$model_name == "edu_cr_int", "adjusted_p_value"]),
-    "", "_Adjusted p-value_", format_p_value(p_value_df[p_value_df$model_name == "edu_mem", "adjusted_p_value"]),
-    "", "_Adjusted p-value_", format_p_value(p_value_df[p_value_df$model_name == "edu_cr", "adjusted_p_value"])
-    ),
-  " " = c(
-    "_Marginal R²_", round(edu_cr_int$marginal_r2, 4),
-    "", "_Marginal R²_", round(edu_mem$marginal_r2, 4),
-    "", "_Adjusted R²_", round(edu_cr$adj_r2, 4)
   ),
   "**DMN Connectivity * Hippocampal Volume**" = c(
     "_Coefficient (95% CI)_",
@@ -852,7 +867,7 @@ long_fc <- data.frame(
     "**Anterior SN Connectivity**", "_Coefficient (95% CI)_",
     paste0(round(cr_sn_mem$coef, 4), " (", round(cr_sn_mem$ci[1], 4), " to ", round(cr_sn_mem$ci[2], 4), ")"),
     "**Anterior SN Connectivity**", "_Coefficient (95% CI)_",
-    paste0(round(cr_sn$coef, 4), " (", round(cr_sn$ci[1], 4), " to ", round(cr_sn$ci[2], 4), ")")
+    paste0(round(cr_sn$coef, 4), " (", format(round(cr_sn$ci[1], 4), scientific = FALSE), " to ", round(cr_sn$ci[2], 4), ")")
   ),
   " " = c(
     "_Adjusted p-value_", format_p_value(p_value_df[p_value_df$model_name == "cr_sn_stats", "adjusted_p_value"]),
@@ -870,7 +885,7 @@ long_fc <- data.frame(
 __Table 5__: _Models Examining Education, Functional Connectivity and Cognitive Reserve_
 ```{r tab5, echo=FALSE} 
 # Format and print the table
-kable(long_fc, format = "markdown", col.names = c(" ", "**Education * Hippocampal Volume**", " ", " ", "**DMN Connectivity * Hippocampal Volume**", " ", " ", "**ECN Connectivity * Hippocampal Volume**", " ", " ", "**Anterior SN Connectivity * Hippocampal Volume**", " ", " "))
+kable(long_fc, format = "markdown", col.names = c(" ", "**DMN Connectivity * Hippocampal Volume**", " ", " ", "**ECN Connectivity * Hippocampal Volume**", " ", " ", "**Anterior SN Connectivity * Hippocampal Volume**", " ", " "))
 ```
 
 Note. Abbreviations: DMN Default Mode Network, ECN Executive Control Network, SN Salience Network, CI Confidence Interval.
@@ -879,7 +894,7 @@ Note. Abbreviations: DMN Default Mode Network, ECN Executive Control Network, SN
 
 Supplementary Figure 1 depicts distributions of normalized memory composite scores by cohort across timepoints. The box-and-jitter plots show the distribution of harmonized memory scores across cohorts following the normalization process. The resulting distributions overlap across cohorts, with means centered near zero and standard deviations close to one, indicating that the harmonization procedure places all cohorts on a common scale. 
 
-**_Cohort Distributions of Episodic Memory Scores_**
+**Supplementary Figure 1:** _Cohort Distributions of Episodic Memory Scores_
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 # Function to plot the memory scores by cohort
 plot_memory_all_tps <- function(df, cohort, tps) {
@@ -930,35 +945,40 @@ plot_memory_all_tps <- function(df, cohort, tps) {
     geom_text(
       data = mean_labels,
       aes(x = !!cohort, y = 2.5, label = label),
+      vjust = -0.3, 
       size = 3, color = "black"
     ) +
-    labs(x = NULL, y = "Memory Composite", fill = "Cohort") +
+    labs(x = NULL, y = "Episodic Memory Composite", fill = "Cohort") +
     theme_minimal(base_size = 12) +
     theme(
       legend.position = "top",
       axis.text.x = element_text(angle = 20, hjust = 1),
-      panel.grid.major.x = element_blank()
+      panel.grid.major.x = element_blank(),
+      plot.margin = margin(t = 10, r = 5, b = 5, l = 5)
     ) +
-    coord_cartesian(ylim = c(-3, 4)) +
-    scale_y_continuous(expand = expansion(mult = c(0.05, 0.1))) +          
+    coord_cartesian(ylim = c(-3, 5)) +
+    scale_y_continuous(expand = expansion(mult = c(0.05, 0.2))) +          
     scale_fill_manual(values = c(
       "Barcelona WAHA" = "indianred2",
       "Oslo LCBC"      = "steelblue2",
       "Umea Betula"    = "#86db49",
       "Umea COBRA"     = "#F7CA18"
     )) 
-
   return(p)
 }
 
-plot_memory_all_tps(
+supp1_plot <- plot_memory_all_tps(
   clean_data,
   cohort = cohort,
   tps    = c(memory.1, memory.2, memory.3, memory.4, memory.5, memory.6)
 )
 ```
 
-Note. Abbreviations: M mean, SD standard deviation, n number.
+```{r supfig1, echo=FALSE, dpi = 400, fig.width=9, fig.height=6, message=FALSE, warning=FALSE}
+supp1_plot
+```
+
+Note. Abbreviations: M mean, SD standard deviation, n number, WAHA Walnuts and Healthy Aging, LCBC Cognition and Plasticity through the Lifespan Study, COBRA Cognition, Brain, and Aging Study.
 
 **_Linear Mixed Effects and Generalized Additive Mixed Models for Memory, Hippocampus Volume, and Age_**
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
@@ -987,11 +1007,11 @@ suppressMessages({
 ```
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
-# Uncomment this code to evaluate and check GAMM assumptions
-
+# # Uncomment this code to evaluate and check GAMM assumptions
+# 
 # # Loop through k values and print results
 # for (k in 1:27) {
-#   model_mem <- gamm4(memory ~ s(age, k = k+3), data = long_clean_data, random = ~(1|id))
+#   model_mem <- gamm4(memory ~ s(age, k = k+3), data = long_clean_data, random = ~(1|id), REML   = FALSE)
 # 
 #   cat("Model with k =", k + 3, "\n")
 #   cat("AIC:", AIC(model_mem$mer), "\n")
@@ -1002,7 +1022,7 @@ suppressMessages({
 # 
 # # Loop through k values and print results
 # for (k in 1:27) {
-#   model_hc <- gamm4(adj_HIP_total ~ s(age, k = k+3), data = long_clean_data, random = ~(1|id))
+#   model_hc <- gamm4(adj_HIP_total ~ s(age, k = k+3), data = long_clean_data, random = ~(1|id), REML   = FALSE)
 # 
 #   cat("Model with k =", k + 3, "\n")
 #   cat("AIC:", AIC(model_hc$mer), "\n")
@@ -1011,10 +1031,10 @@ suppressMessages({
 #   cat("\n")
 # }
 # 
-# gamm_memory <- gamm4(memory ~ s(age, k = 4), data = long_clean_data, random = ~(1|id))
+# gamm_memory <- gamm4(memory ~ s(age, k = 4), data = long_clean_data, random = ~(1|id), REML   = FALSE)
 # gam.check(gamm_memory$gam)
 # 
-# gamm_hc <- gamm4(adj_HIP_total ~ s(age, k = 5), data = long_clean_data, random = ~(1|id))
+# gamm_hc <- gamm4(adj_HIP_total ~ s(age, k = 5), data = long_clean_data, random = ~(1|id), REML   = FALSE)
 # gam.check(gamm_hc$gam)
 ```
 
@@ -1118,7 +1138,7 @@ gamm_table <- data.frame(
 )
 ```
 
-We initially fit the GAMMs using a range of basis functions and compared their fit to the LME model. Despite variations in the GAMM fits, the conclusions regarding how the GAMM and the LME models compared did not change. In Supplementary Table 1, we fit the GAMMs with four basis functions for the memory model and five basis functions for the hippocampus model as increasing the number beyond this point did not substantially change the AIC or BIC values. The smooth age-term was significant in the memory GAMM (effective degrees of freedom (EDF) = `r round(gamm_compare_em_memory$EDF, 4)`, _p_-value = `r format_p_value(gamm_compare_em_memory$p_value_gamm)`, _p_<sub>FDR</sub> = `r format_p_value(p_value_df[p_value_df$model_name == "gamm_memory_gamm", "adjusted_p_value"])`) and the hippocampus GAMM (EDF = `r round(gamm_compare_em_adj_hc$EDF, 4)`, _p_-value = `r format_p_value(gamm_compare_em_adj_hc$p_value_gamm)`, _p_<sub>FDR</sub> = `r format_p_value(p_value_df[p_value_df$model_name == "gamm_hc_gamm", "adjusted_p_value"])`). For the LME models, both models had significant age coefficients (memory: β = `r round(mem_age_lme$coef, 4)`, _p_ = `r format(format_p_value(mem_age_lme$p_value), scientific = FALSE)`, _p_<sub>FDR</sub> = `r format_p_value(p_value_df[p_value_df$model_name == "mem_age_lme", "adjusted_p_value"])`; hippocampal volume β = `r round(hc_age_lme$coef, 4)`, _p_ = `r format(format_p_value(hc_age_lme$p_value), scientific = FALSE)`, _p_<sub>FDR</sub> = `r format_p_value(p_value_df[p_value_df$model_name == "hc_age_lme", "adjusted_p_value"])`). For memory, the LME and GAMM fits were similar; however, the GAMM fit was better according to AIC, BIC, and LRT. For hippocampal volume, the GAMM fit was better according to AIC, BIC, and LRT.
+We initially fit the GAMMs using a range of basis functions and compared their fit to the LME model. Despite variations in the GAMM fits, the conclusions regarding how the GAMM and the LME models compared did not change. In Supplementary Table 1, we fit the GAMMs with four basis functions for the memory model and five basis functions for the hippocampus model as increasing the number beyond this point did not substantially change the AIC or BIC values. The smooth age-term was significant in the memory GAMM (effective degrees of freedom (EDF) = `r round(gamm_compare_em_memory$EDF, 4)`, _p_-value = `r format_p_value(gamm_compare_em_memory$p_value_gamm)`, _p_<sub>FDR</sub> = `r format_p_value(p_value_df[p_value_df$model_name == "gamm_memory_gamm", "adjusted_p_value"])`) and the hippocampus GAMM (EDF = `r round(gamm_compare_em_adj_hc$EDF, 4)`, _p_-value = `r format_p_value(gamm_compare_em_adj_hc$p_value_gamm)`, _p_<sub>FDR</sub> = `r format_p_value(p_value_df[p_value_df$model_name == "gamm_hc_gamm", "adjusted_p_value"])`). For the LME models, both models had significant age coefficients (memory: β = `r round(mem_age_lme$coef, 4)`, 95% CI `r round(mem_age_lme$ci[1], 4)` to `r round(mem_age_lme$ci[2], 4)`, _p_ = `r format(format_p_value(mem_age_lme$p_value), scientific = FALSE)`, _p_<sub>FDR</sub> = `r format_p_value(p_value_df[p_value_df$model_name == "mem_age_lme", "adjusted_p_value"])`; hippocampal volume β = `r round(hc_age_lme$coef, 4)`, 95% CI `r round(hc_age_lme$ci[1], 4)` to `r round(hc_age_lme$ci[2], 4)`, _p_ = `r format(format_p_value(hc_age_lme$p_value), scientific = FALSE)`, _p_<sub>FDR</sub> = `r format_p_value(p_value_df[p_value_df$model_name == "hc_age_lme", "adjusted_p_value"])`). For memory and hippocampal volume, the GAMM fits were better according to AIC, BIC, and LRT.
 
 __Supplementary Table 1__: _Linear Mixed Effects and Generalized Additive Mixed Models_
 ```{r suptab1, echo=FALSE} 
@@ -1127,7 +1147,7 @@ kable(gamm_table, format = "markdown", col.names = c(" ", "**Memory**", " ", " "
 ```
 Note. Abbreviations: GAMM Generalized Additive Mixed Model, LME Linear Mixed Effects, AIC Akaike Information Criterion, BIC Bayesian Information Criterion, LRT Likelihood Ratio Test.
 
-__Supplementary Figure 1__: _Memory and Hippocampus Volume Change with Age_
+__Supplementary Figure 2__: _Memory and Hippocampus Volume Change with Age_
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 # Define colors
 color_palette <- c("indianred2", "steelblue2", "#86db49", "#F7CA18", "blue", "black")
@@ -1161,7 +1181,7 @@ hc_mem_age <- mem_age + hc_age + plot_layout(ncol = 2, guides = "collect") &
   theme(legend.position = "bottom")
 ```
 
-```{r supfig1, echo=FALSE, dpi = 400, fig.width=7, fig.height=4, message=FALSE, warning=FALSE}
+```{r supfig3, echo=FALSE, dpi = 400, fig.width=7, fig.height=4, message=FALSE, warning=FALSE}
 hc_mem_age
 ```
 

@@ -115,9 +115,9 @@ def compute_BM(X, Y, data, scale='maxabs', alpha_point=0.5, metric='euclid'):
 
 def compute_BM_data_based(X, Y):
     """Compute BM based on data-driven reference:
-      1. Perpendicular distance from (X, Y) to the line y = 0.144x
+      1. Perpendicular distance from (X, Y) to the line y = 0.1424x
       2. Shortest distance from (X, Y) to the intersection of that line with x = 1
-         (which is (1, 0.144))
+         (which is (1, 0.1424))
     
     Args:
         X, Y: Hippocampal and memory change values.
@@ -134,11 +134,11 @@ def compute_BM_data_based(X, Y):
     Xn, Yn = _maxabs(Xn), _maxabs(Yn)
 
     # Distance to line y = m*x 
-    m = 0.144
+    m = 0.1424
     A, B, C = m, -1, 0
     dist_line = np.abs(A * Xn + B * Yn + C) / np.sqrt(A**2 + B**2) # Standard euclidean distance formula
 
-    # Distance to the intersection point (1, 0.144)
+    # Distance to the intersection point (1, 0.1424)
     x_ref = 1
     y_ref = m * x_ref
     dist_point = np.sqrt((Xn - x_ref)**2 + (Yn - y_ref)**2)
