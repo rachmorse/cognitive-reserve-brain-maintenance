@@ -3,7 +3,19 @@ import matplotlib.pyplot as plt
 from matplotlib.colors import LinearSegmentedColormap
 from numpy import arctanh, sqrt
 
-# First optionally create a test dataset with 800x800 points, range [-1, 1] in both X and Y
+# Note that this script should be run using the scaled residuals for age from both memory and hippocampal volume slopes
+# So X = scaled hippocampal residuals, Y = scaled memory residuals
+
+# Optionally, uncomment this code for scaling
+# # Z-score normalization
+# X = (X - X.mean()) / X.std()
+# Y = (Y - Y.mean()) / Y.std()
+
+# # Normalize to [-1, 1]
+# X = X / max(abs(X.min(skipna=True)), abs(X.max(skipna=True)))
+# Y = Y / max(abs(Y.min(skipna=True)), abs(Y.max(skipna=True)))
+
+# Then optionally create a test dataset with 800x800 points, range [-1, 1] in both X and Y
 x = np.linspace(-1, 1, 800)
 y = np.linspace(-1, 1, 800)
 X, Y = np.meshgrid(x, y) # X and Y are a 2D grid of coordinates (all possible combinations of x and y)
