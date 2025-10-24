@@ -1,1 +1,2 @@
 *.Rmd linguist-language=R
+*.py linguist-language=Python

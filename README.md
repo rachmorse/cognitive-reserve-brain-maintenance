@@ -15,7 +15,7 @@ This section includes several scripts used to conduct this study:
 - `data_cleaning.Rmd`: Cleans and merges data from the Lifebrain cohorts, removes outliers.
 - `calculating_annual_change.Rmd`: Calculates adjusted hippocampal volume, average functional connectivity, and annual change variables. Also, takes the residuals of GAMs with hippocampal and memory change and age. 
 - `crbm_vars.py`: Creates the CR/BM variables and visualizes the moderation effect. 
-- `analysis_and_results.Rmd`: Contains all primary and supplementary analyses from the study.
+- `analysis_and_results.Rmd`: Contains primary and supplementary analyses from the study.
 - `sensitivity_analyses.py`: Generates CR and BM measure variations (options: for BM change scaling method, distance calculation method, distance weighting, from theoretical to empirial method; for CR change k, θ). Compares the variations to original measures, and plots each variation.
 
 ## Usage
