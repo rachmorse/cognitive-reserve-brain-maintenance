@@ -6,7 +6,7 @@ This repository contains the analysis scripts for our study on Cognitive Reserve
 
 #### How to create the CR/BM variables
 
-- `making_crbm_variables.Rmd`: This script provides code for generating the CR and BM variables, including code to simulate example data and visualize the resulting measures.
+- `making_crbm_variables.Rmd`: This script provides code for generating the CR and BM variables, including code to simulate example data and visualize the resulting measures. If you are interested in alternative formulations of the variables, please see `sensitivity_analyses.py` below. 
 
 #### Analysis Scripts
 
