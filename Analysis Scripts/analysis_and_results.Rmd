@@ -480,9 +480,15 @@ Note. Abbreviations: CI Confidence Interval.
 
 ```{r echo=FALSE}
 # Calculate the combined CR and BM value
+# clean_data <- clean_data %>%
+#   mutate(
+#     high_cr = ifelse(CR > 0.5, "High CR", "Low CR")
+#   )
+
 clean_data <- clean_data %>%
   mutate(
-    high_cr = ifelse(CR > 0.5, "High CR", "Low CR")
+    high_cr = ifelse(CR > median(CR, na.rm = TRUE), "High CR", "Low CR"),
+    high_bm = ifelse(BM > median(BM, na.rm = TRUE), "High BM", "Low BM")
   )
 
 # Calculate mean and SD for CR and BM variables
@@ -493,6 +499,21 @@ max_bm <- max(clean_data$BM, na.rm = TRUE)
 mean_cr <- mean(clean_data$CR, na.rm = TRUE)
 min_cr <- min(clean_data$CR, na.rm = TRUE)
 max_cr <- max(clean_data$CR, na.rm = TRUE)
+
+# Divide data into pathways
+cr_high <- clean_data %>%
+  filter(high_cr == "High CR") %>%
+  nrow()
+bm_high <- clean_data %>%
+  filter(high_bm == "High BM") %>%
+  nrow()
+cr_bm_high <- clean_data %>%
+  filter(high_cr == "High CR" & high_bm == "High BM") %>%
+  nrow()
+cr_bm_low <- clean_data %>%
+  filter(high_cr == "Low CR" & high_bm == "Low BM") %>%
+  nrow()
+total_participants <- nrow(clean_data)
 ```
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
@@ -625,7 +646,7 @@ combined_crbm
 ```
 <small>A) The association between hippocampus and memory annual change, adjusted for age. The color code represents the BM value for a given participant. B) The same association between hippocampus and memory annual change, adjusted for age. The color code represents the CR value for a given participant. Abbreviations: CR Cognitive Reserve, BM Brain Maintenance.</small>
 
-The mean BM value was  `r round(mean_bm, 4)` (range = `r round(min_bm, 4)` - `r round(max_bm, 4)`), and the mean CR value was `r round(mean_cr, 4)` (range = `r round(min_cr, 4)` - `r round(max_cr, 4)`). To visualize how CR moderates the hippocampal-memory relationship, we examined the association between hippocampal and memory change across increasing levels of CR (Figure 4). We divided participants into CR bins and estimating local linear fits within each bin to visualize a continuous moderation effect. The slope of the hippocampal-memory relationship decreased as CR increased, indicating that individuals with higher CR showed weaker coupling between hippocampal decline and memory decline. We found a small positive association between our CR and BM variables (Spearman’s ρ = `r round(crbm_corr$estimate, 4)`, _p_ = `r signif(crbm_corr$p.value, 4)`, _p_<sub>FDR</sub> = `r format_p_value(p_value_df[p_value_df$model_name == "crbm_corr", "adjusted_p_value"])`). Sensitivity analyses showed that alternative formulations of the CR and BM variables were highly correlated with the main definitions (Spearman’s ρ = 0.73-1.00, _ps_ = < 0.0001; Supplementary Table 2, Supplementary Figure 3). 
+The mean BM value was  `r round(mean_bm, 4)` (range = `r round(min_bm, 4)` - `r round(max_bm, 4)`), and the mean CR value was `r round(mean_cr, 4)` (range = `r round(min_cr, 4)` - `r round(max_cr, 4)`). We classified participants into high and low groups for each variable using a median split. Of these, `r cr_bm_high`/`r total_participants` participants showed both high CR and BM, whereas `r cr_bm_low`/`r total_participants` participants were low in both. To visualize how CR moderates the hippocampal-memory relationship, we examined the association between hippocampal and memory change across increasing levels of CR (Figure 4). We divided participants into CR bins and estimating local linear fits within each bin to visualize a continuous moderation effect. The slope of the hippocampal-memory relationship decreased as CR increased, indicating that individuals with higher CR showed weaker coupling between hippocampal decline and memory decline. We found a small positive association between our CR and BM variables (Spearman’s ρ = `r round(crbm_corr$estimate, 4)`, _p_ = `r signif(crbm_corr$p.value, 4)`, _p_<sub>FDR</sub> = `r format_p_value(p_value_df[p_value_df$model_name == "crbm_corr", "adjusted_p_value"])`). Sensitivity analyses showed that alternative formulations of the CR and BM variables were highly correlated with the main definitions (Spearman’s ρ = 0.73-1.00, _ps_ = < 0.0001; Supplementary Table 2, Supplementary Figure 3). 
 
  
 __Figure 4:__ _Change in the Memory–Hippocampal Relationship Across Levels of Cognitive Reserve_
@@ -810,7 +831,7 @@ cr_fc <- cr_fc_sn + cr_fc_dmn +
   theme(legend.position = "bottom")
 ```
 
-__Figure 5:__ _Anterior Salience Network Functional Connectivity and the Hippocampal-Memory Relationship_
+__Figure 5:__ _Anterior Salience Network and Default Mode Network Functional Connectivity and the Hippocampal-Memory Relationship_
 
 ```{r fig5, echo=FALSE, dpi = 400, fig.width=5, fig.height=5, message=FALSE, warning=FALSE}
 cr_fc
@@ -849,7 +870,7 @@ long_fc <- data.frame(
     "**ECN Connectivity**", "_Coefficient (95% CI)_",
     paste0(round(cr_ec_mem$coef, 4), " (", round(cr_ec_mem$ci[1], 4), " to ", round(cr_ec_mem$ci[2], 4), ")"),
     "**ECN Connectivity**", "_Coefficient (95% CI)_",
-    paste0(round(cr_ec$coef, 4), " (", round(cr_ec$ci[1], 4), " to ", round(cr_ec$ci[2], 4), ")")
+    paste0(round(cr_ec$coef, 4), " (", format(round(cr_ec$ci[1], 4), scientific = FALSE), " to ", round(cr_ec$ci[2], 4), ")")
   ),
   " " = c(
     "_Adjusted p-value_", format_p_value(p_value_df[p_value_df$model_name == "cr_ecn_stats", "adjusted_p_value"]),
@@ -882,7 +903,7 @@ long_fc <- data.frame(
 )
 ```
 
-__Table 5__: _Models Examining Education, Functional Connectivity and Cognitive Reserve_
+__Table 5__: _Models Examining Functional Connectivity and Cognitive Reserve_
 ```{r tab5, echo=FALSE} 
 # Format and print the table
 kable(long_fc, format = "markdown", col.names = c(" ", "**DMN Connectivity * Hippocampal Volume**", " ", " ", "**ECN Connectivity * Hippocampal Volume**", " ", " ", "**Anterior SN Connectivity * Hippocampal Volume**", " ", " "))
