@@ -19,32 +19,32 @@ m = X_raw.notna() & Y_raw.notna()
 X_raw, Y_raw = X_raw[m], Y_raw[m]
 
 # Z-score normalization
-X_raw = (X_raw - X_raw.mean()) / X_raw.std()
-Y_raw = (Y_raw - Y_raw.mean()) / Y_raw.std()
+X_zscore = (X_raw - X_raw.mean()) / X_raw.std()
+Y_zscore = (Y_raw - Y_raw.mean()) / Y_raw.std()
 
 # Normalize to [-1, 1]
-X_raw = X_raw / max(abs(X_raw.min(skipna=True)), abs(X_raw.max(skipna=True)))
-Y_raw = Y_raw / max(abs(Y_raw.min(skipna=True)), abs(Y_raw.max(skipna=True)))
+X_norm = X_zscore / max(abs(X_zscore.min(skipna=True)), abs(X_zscore.max(skipna=True)))
+Y_norm = Y_zscore / max(abs(Y_zscore.min(skipna=True)), abs(Y_zscore.max(skipna=True)))
 
 # Calculate CR values
 theta_flat = np.deg2rad(0.0)     
 theta_diag = np.deg2rad(45.0)       
 theta_perp = np.deg2rad(90.0)     
 kx, ky = 2, 2
-wX_raw = 0.5 * (1 + np.tanh(kx * X_raw))
-wY_raw = 0.5 * (1 + np.tanh(ky * Y_raw))
-theta_raw = ((1 - wX_raw) * (wY_raw) * theta_flat +
-             wX_raw * (1 - wY_raw) * theta_perp +
-             ((wX_raw * wY_raw) + (1 - wX_raw) * (1 - wY_raw)) * theta_diag)
-CR_raw = np.cos(theta_raw) * Y_raw - np.sin(theta_raw) * X_raw
+wX_norm = 0.5 * (1 + np.tanh(kx * X_norm))
+wY_norm = 0.5 * (1 + np.tanh(ky * Y_norm))
+theta_raw = ((1 - wX_norm) * (wY_norm) * theta_flat +
+             wX_norm * (1 - wY_norm) * theta_perp +
+             ((wX_norm * wY_norm) + (1 - wX_norm) * (1 - wY_norm)) * theta_diag)
+CR_raw = np.cos(theta_raw) * Y_norm - np.sin(theta_raw) * X_norm
 
 # Then normalize accordingly
 CR_bound = 1.0484785942244885 # pre-calculated max / min possible value for this dataset
 CR_raw = (CR_raw + CR_bound) / (2 * CR_bound)
 
 # Calculate BM values
-dist_bm_point_raw = np.sqrt((X_raw - 1)**2 + (Y_raw - 1)**2)
-dist_bm_line_raw  = np.abs(X_raw - Y_raw) / np.sqrt(2)
+dist_bm_point_raw = np.sqrt((X_norm - 1)**2 + (Y_norm - 1)**2)
+dist_bm_line_raw  = np.abs(X_norm - Y_norm) / np.sqrt(2)
 BM_raw = 3.414214 - (dist_bm_point_raw + dist_bm_line_raw) # pre-calculated max BM value
 BM_raw = BM_raw / 3.414214 # Scale to 0-1
 
@@ -58,8 +58,8 @@ ids = data.loc[m, id_col].reset_index(drop=True)
 
 df_raw = pd.DataFrame({
     id_col: ids,
-    "X": X_raw.reset_index(drop=True),
-    "Y": Y_raw.reset_index(drop=True),
+    "X": X_norm.reset_index(drop=True),
+    "Y": Y_norm.reset_index(drop=True),
     "CR":    CR_raw.reset_index(drop=True),
     "BM":    BM_raw.reset_index(drop=True),
 })
