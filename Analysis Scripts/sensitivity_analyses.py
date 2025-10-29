@@ -4,6 +4,7 @@ from scipy.stats import spearmanr
 import matplotlib.pyplot as plt
 from matplotlib.colors import LinearSegmentedColormap
 
+
 def _maxabs(a):
     """Rescale an array to the fixed range [-1, 1].
 
@@ -14,7 +15,7 @@ def _maxabs(a):
         ndarray: Values linearly mapped from −1 to +1.
     """
     a = np.asarray(a, float)
-    return a / (max(abs(a.min()), abs(a.max())) + 1e-12)
+    return a / (max(abs(a.min()), abs(a.max())))
 
 
 def _zscore(a):
@@ -26,17 +27,20 @@ def _zscore(a):
     Returns:
         ndarray: Z-scored values.
     """
-    return (a - a.mean()) / (a.std() + 1e-12)
+    return (a - a.mean()) / (a.std())
 
 
-def compute_CR(X, Y, scale='maxabs', k=2,
-               theta_flat=np.deg2rad(0), theta_diag=np.deg2rad(45), theta_perp=np.deg2rad(90)):
+def compute_CR(X, Y, cr_min, cr_max, scale='maxabs', k=2, theta_flat=np.deg2rad(0), 
+               theta_diag=np.deg2rad(45), theta_perp=np.deg2rad(90)):
     """Compute the CR value for given X and Y coordinates.
 
     Test different k values and thetas. 
 
     Args:
         X, Y: Hippocampal and memory change values.
+        cr_min: Pre-calculated min for normalization. 
+        cr_max: Pre-calculated max for normalization.
+            These are needed because different methods have different min-max.
         scale: {'maxabs', 'zscore'}, Pre-scaling strategy. 'maxabs' rescales to [−1,1]; 'zscore' 
             standardizes then rescales to [−1,1].
         theta_flat, theta_diag, theta_perp (float, optional): Orientation angles (radians) for each quadrant configuration.
@@ -59,12 +63,11 @@ def compute_CR(X, Y, scale='maxabs', k=2,
     theta = (1 - wx) * wy * theta_flat + wx * (1 - wy) * theta_perp + ((wx * wy) + (1 - wx) * (1 - wy)) * theta_diag
     CR = np.cos(theta) * Yn - np.sin(theta) * Xn
 
-    CR_bound = 1.0484785942244885 # pre-calculated max / min possible value for this dataset
-    return (CR + CR_bound) / (2 * CR_bound)
+    # Normalize and return
+    return (CR - cr_min) / (cr_max - cr_min)
 
 
-
-def compute_BM(X, Y, data, scale='maxabs', alpha_point=0.5, metric='euclid'):
+def compute_BM(X, Y, bm_max, scale='maxabs', alpha_point=0.5, metric='euclid'):
     """Compute the BM value for given X and Y coordinates.
 
     Tests euclidean distance (direct distance), manhattan distance (grid distance), 
@@ -74,8 +77,8 @@ def compute_BM(X, Y, data, scale='maxabs', alpha_point=0.5, metric='euclid'):
 
     Args:
         X, Y: Hippocampal and memory change values.
-        data: {'sim', 'real'}, Whether the data is simulated or real for normalization purposes.
-            This is needed because different distance methods have different maxes.
+        bm_max: Pre-calculated max for normalization. Note the min is always 0.
+            This is needed because different methods have different maxes.
         scale: {'maxabs', 'zscore'}, Pre-scaling strategy. 'maxabs' rescales to [−1,1]; 'zscore' 
             standardizes then rescales to [−1,1].
         alpha_point (float): Weighting factor between point distance and line distance (0 to 1).
@@ -104,14 +107,13 @@ def compute_BM(X, Y, data, scale='maxabs', alpha_point=0.5, metric='euclid'):
     else:
         raise ValueError("metric must be 'euclid', 'manhattan', or 'cheby'")
 
-    BM_raw = 2 * (alpha_point * d_point) + 2 * (1 - alpha_point) * d_line
+    # Combine both distances with consideration of alpha weighting
+    BM = 2 * (alpha_point * d_point) + 2 * (1 - alpha_point) * d_line
 
-    if data == "sim":
-        BM_inversed = BM_raw.max() - BM_raw
-        return (BM_inversed - BM_inversed.min()) / (BM_inversed.max() - BM_inversed.min())
-    else:
-        BM_inversed = 3.414214 - BM_raw # pre-calculated max BM value
-        return (BM_inversed / 3.414214)
+    # Inverse scores and normalize
+    BM = bm_max - BM
+    return BM / bm_max
+
 
 def compute_BM_data_based(X, Y):
     """Compute BM based on data-driven reference:
@@ -150,6 +152,7 @@ def compute_BM_data_based(X, Y):
     BM = 3.3044 - BM # pre-defined max for this dataset
     return BM / 3.3044
 
+
 def plot_panel(ax, X, Y, Z, title, label_text, cmap=None):
     """Plot a single panel of the CR or BM variation.
     
@@ -166,10 +169,12 @@ def plot_panel(ax, X, Y, Z, title, label_text, cmap=None):
     contours = ax.contour(X, Y, Z, levels=levels, colors='black', linewidths=0.6, alpha=1)
     ax.clabel(contours, inline=True, fontsize=7, fmt="%.2f")
     ax.axhline(0, color='white', linewidth=1.0, alpha=0.8)
+    ax.axvline(0, color='white', linewidth=1.0, alpha=0.8)
     ax.set_xlabel("Hippocampal Annual Change (age-adjusted)")
     ax.set_ylabel("Memory Annual Change (age-adjusted)")
     ax.set_title(title, fontsize=10)
     return mesh, label_text
+
 
 def main():
     # Read in data
@@ -185,14 +190,14 @@ def main():
         )
 
     # Build arrays
-    X_raw = pd.to_numeric(mem_hc_data["res_hc_slopes_age"], errors="coerce")   # hippocampal residuals
-    Y_raw = pd.to_numeric(mem_hc_data["res_mem_slopes_age"],  errors="coerce")   # memory residuals
+    X_res = pd.to_numeric(mem_hc_data["res_hc_slopes_age"], errors="coerce")   # hippocampal residuals
+    Y_res = pd.to_numeric(mem_hc_data["res_mem_slopes_age"],  errors="coerce")   # memory residuals
     CR_original = pd.to_numeric(df["CR"], errors="coerce")
     BM_original = pd.to_numeric(df["BM"], errors="coerce")
 
     # Drop NA
-    m = X_raw.notna() & Y_raw.notna()
-    X_raw, Y_raw = X_raw[m], Y_raw[m]
+    m = X_res.notna() & Y_res.notna()
+    X_res, Y_res = X_res[m], Y_res[m]
 
     variants = []
 
@@ -204,7 +209,7 @@ def main():
     for k in [1, 4, 6]:
         variants += [(f'CR k={k}', dict(scale='zscore_maxabs', k=k), 'CR')]
 
-    # C) BM axis weighting
+    # C) BM weighting
     for a in [0.3, 0.7]:
         variants += [(f'BM alpha_point={a}', dict(scale='zscore_maxabs', alpha_point=a, metric='euclid'), 'BM')]
 
@@ -225,17 +230,45 @@ def main():
     # F) BM data-based distance
     variants += [('BM data-based', dict(), 'BM')]
 
+    # Define pre-calculated CR bounds 
+    # This is so the actual data are min-maxed using the max possible for the variant 
+    # rather than the observed max in the sample
+    cr_bounds = [
+        (-1.0484761307493822,  1.0484761307493822),  # CR scale=maxabs
+        (-1.168672389055221,   1.168672389055221),   # CR k=1
+        (-1.0190570698237502,  1.0190570698237502),  # CR k=4
+        (-1.0113112142837763,  1.0113112142837763),  # CR k=6
+        (-1.4140724591730809,  1.0265229491609051),  # CR thetas=0,22.5,45 (not symmetric)
+        (-1.0130764092453262,  1.0130764092453262)   # CR thetas=-15,45,105
+    ]
+
+    bm_maxes = [
+        3.414213562370681,    # BM α=0.5 Euclidean
+        3.1798989873208354,   # BM α=0.3 Euclidean
+        3.9597979746435166,   # BM α=0.7 Euclidean
+        4.0,                  # BM Manhattan
+        3.0,                  # BM Chebyshev
+        3.3044                # BM data-based
+    ]
+    
     rows = []
+    cr_idx = 0
+    bm_idx = 0
+
     for name, params, kind in variants:
         if kind == 'CR':
-            arr = compute_CR(X_raw, Y_raw, **params)
+            min, max = cr_bounds[cr_idx]
+            arr = compute_CR(X_res, Y_res, cr_max=max, cr_min=min, **params)
+            cr_idx += 1
             rho, p = spearmanr(CR_original, arr)
             rows.append([name, 'CR', rho, p])
         else:
             if name == 'BM data-based':
-                arr = compute_BM_data_based(X_raw, Y_raw)
+                arr = compute_BM_data_based(X_res, Y_res)
             else:
-                arr = compute_BM(X_raw, Y_raw, data="real", **params)
+                max = bm_maxes[bm_idx]
+                arr = compute_BM(X_res, Y_res, bm_max=max, **params)
+                bm_idx += 1
 
             rho, p = spearmanr(BM_original, arr)
             rows.append([name, 'BM', rho, p])
@@ -262,9 +295,9 @@ def main():
     cmap_bm = LinearSegmentedColormap.from_list("bm_cmap", custom_colors_bm, N=256)
     cmap_cr = LinearSegmentedColormap.from_list("cr_cmap", custom_colors_cr, N=256)
 
-    # Different variants to test
+    # Different variants to visualize for CR
     variants_CR = [
-        ("CR scale=max-abs only (k=2, 0/45/90°)",           dict(scale='maxabs', k=2)),
+        ("CR scale=max-abs only (k=2, 0/45/90°)",          dict(scale='maxabs', k=2)),
         ("CR k=1 (z-score, max-abs, 0/45/90°)",            dict(scale='zscore_maxabs', k=1)),
         ("CR k=4 (z-score, max-abs, 0/45/90°)",            dict(scale='zscore_maxabs', k=4)),
         ("CR k=6 (z-score, max-abs, 0/45/90°)",            dict(scale='zscore_maxabs', k=6)),
@@ -289,8 +322,9 @@ def main():
     mappables = []
     for i, (title, params) in enumerate(variants_CR):
         ax = axs[i]
-        cognitive_reserve = compute_CR(X, Y, **params)   
-        plt.sca(ax)                                      
+        min_, max_ = cr_bounds[i]
+        cognitive_reserve = compute_CR(X, Y, cr_max=max_, cr_min=min_, **params)
+        plt.sca(ax)
         m, _ = plot_panel(ax, X, Y, cognitive_reserve, title, "Cognitive Reserve", cmap=cmap_cr)
         mappables.append(m)
 
@@ -299,12 +333,12 @@ def main():
 
     # Now plot BM variants
     variants_BM = [
-        ("BM scale=max-abs only (α=0.5, Euclidean)",          dict(scale='maxabs',       alpha_point=0.5, metric='euclid')),
+        ("BM scale=max-abs only (α=0.5, Euclidean)",         dict(scale='maxabs',       alpha_point=0.5, metric='euclid')),
         ("BM α=0.3 (z-score, max-abs, Euclidean)",           dict(scale='zscore_maxabs', alpha_point=0.3, metric='euclid')),
         ("BM α=0.7 (z-score, max-abs, Euclidean)",           dict(scale='zscore_maxabs', alpha_point=0.7, metric='euclid')),
-        ("BM metric=Manhattan (α=0.5)",                dict(scale='zscore_maxabs', alpha_point=0.5, metric='manhattan')),
-        ("BM metric=Chebyshev (α=0.5)",                    dict(scale='zscore_maxabs', alpha_point=0.5, metric='cheby')),
-        ("BM data-based",                               {"_data_based": True})
+        ("BM metric=Manhattan (α=0.5)",                      dict(scale='zscore_maxabs', alpha_point=0.5, metric='manhattan')),
+        ("BM metric=Chebyshev (α=0.5)",                      dict(scale='zscore_maxabs', alpha_point=0.5, metric='cheby')),
+        ("BM data-based",                                    {"_data_based": True})
     ]
 
     n_bm = len(variants_BM)
@@ -317,7 +351,10 @@ def main():
     for i, (title, params) in enumerate(variants_BM):
         ax = axs_bm[i]
         plt.sca(ax)
-        Z = compute_BM_data_based(X, Y) if (params is None or params.get("_data_based", False)) else compute_BM(X, Y, data="sim", **params)
+        if params is None or params.get("_data_based", False):
+            Z = compute_BM_data_based(X, Y)
+        else:
+            Z = compute_BM(X, Y, bm_max=bm_maxes[i], **params)
         m, _ = plot_panel(ax, X, Y, Z, title, "Brain Maintenance", cmap=cmap_bm)
         mappables_bm.append(m)
 
