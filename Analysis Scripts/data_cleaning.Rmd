@@ -56,7 +56,7 @@ waha_df_dem$id <- paste("waha_", waha_df_dem$ID, sep = "")
 waha_df_struct <- merge(waha_df_dem, waha_df_struct, by = c("id", "timepoint"), all = TRUE) # This keeps all participants so need to drop NAs
 ```
 
-Now, read in the demographic, and structural data for the WAHA control group 
+Now, read in the demographic and structural data for the WAHA control group 
 ```{r warning=FALSE}
 # Read in control data
 waha_df_struct_controls <- read.delim("/tsd/p274/data/durable/projects/p027-cr_bm/aaic/bcn.txt", header = TRUE)
@@ -71,7 +71,7 @@ waha_df_struct_controls$id <- paste("waha_", waha_df_struct_controls$ID, sep = "
 # Read in control education
 waha_df_edu_controls <- read.delim("/tsd/p274/data/durable/projects/p027-cr_bm/aaic/bcn_educ.txt", header = TRUE)
 
-# Set the timeframe to 1 for all participants
+# Set the timepoint to 1 for all participants
 waha_df_edu_controls$timepoint <- 1
 
 # Rename the IDs
@@ -83,7 +83,7 @@ waha_df_struct_controls <- merge(waha_df_edu_controls, waha_df_struct_controls, 
 # Read in control sex
 waha_df_sex_controls <- read.delim("/tsd/p274/data/durable/projects/p027-cr_bm/aaic/bcn_sex.txt", header = TRUE)
 
-# Set the timeframe to 1 for all participants
+# Set the timepoint to 1
 waha_df_sex_controls$timepoint <- 1
 
 # Rename the IDs
@@ -93,7 +93,7 @@ waha_df_sex_controls$id <- paste("waha_", waha_df_sex_controls$ID, sep = "")
 waha_df_struct_controls <- merge(waha_df_sex_controls, waha_df_struct_controls, by = c("id", "timepoint"), all = TRUE)
 
 # Change variable to numeric for merge
-waha_df_struct_controls$Visual_Memory_ROCF_Imm <- as.numeric(waha_df_struct_controls$Visual_Memory_ROCF_Imm) # Need to change to numeric for later
+waha_df_struct_controls$Visual_Memory_ROCF_Imm <- as.numeric(waha_df_struct_controls$Visual_Memory_ROCF_Imm)
 
 # Merge the two WAHA cohorts
 waha_df_struct <- merge(waha_df_struct_controls, waha_df_struct, by = c(
@@ -158,10 +158,6 @@ selected_cols <- c(
   names(waha_df_fc)[grepl("^(RECN|LECN).*- (RECN|LECN)", names(waha_df_fc))],
   names(waha_df_fc)[grepl("^(AS).*- (AS)", names(waha_df_fc))]
 )
-
-# Remove duplicate column names
-selected_cols <- unique(selected_cols) # because some fc pairs are in multiple networks and as saved twice
-
 waha_df_fc <- waha_df_fc[, selected_cols]
 
 # Rename the waha columns so they dont have a space and can be merged with all the other cohorts
@@ -319,8 +315,6 @@ selected_cols <- c(
   names(cobra_func)[grepl("^(RECN|LECN).*-(RECN|LECN)", names(cobra_func))],
   names(cobra_func)[grepl("^(AS).*-(AS)", names(cobra_func))]
 )
-
-selected_cols <- unique(selected_cols) # because some fc connections are in multiple networks
 cobra_func <- cobra_func[, selected_cols]
 
 # Rename the IDs
@@ -328,7 +322,7 @@ cobra_func <- cobra_func %>%
   mutate(id = str_replace(id, "C([0-9]+)_y[0-9]+", "cobra_C\\1")) # This removes the string timepoint and adds the string cobra
 
 # Merge COBRA structural and functional dfs into one
-cobra_df <- merge(cobra_struct, cobra_func, by = c("id", "timepoint"), all = TRUE) # This keeps all participants so need to drop NAs
+cobra_df <- merge(cobra_struct, cobra_func, by = c("id", "timepoint"), all = TRUE)
 ```
 
 Rename variables and covert to wide format
@@ -415,8 +409,6 @@ selected_cols <- c(
   names(betula_func)[grepl("^(RECN|LECN).*-(RECN|LECN)", names(betula_func))],
   names(betula_func)[grepl("^(AS).*-(AS)", names(betula_func))]
 )
-
-selected_cols <- unique(selected_cols) # because some fc connections are in multiple networks
 betula_func <- betula_func[, selected_cols]
 
 # Merge Betula functional and structural dfs and clean
@@ -439,7 +431,6 @@ betula_em <- betula_em %>%
   )
 
 columns_to_keep <- c("id", "timepoint", "edu", "mmse", "sex", "SPT_VTCategoryCuedRecall::sptcrc", "SPT_VTCategoryCuedRecall::vtcrc", "SPT_VTFreeRecall::sptb", "SPT_VTFreeRecall::vtb")
-
 betula_em <- select(betula_em, all_of(columns_to_keep))
 
 # Rename the IDs
@@ -451,11 +442,11 @@ betula_em <- betula_em %>%
   group_by(id) %>%
   mutate(timepoint = row_number())
 
-# Recode the 'sex' variable. Currently its coded the opposite to
+# Recode sex. Currently its coded opposite
 betula_em$sex <- recode(betula_em$sex, "2" = "male", "1" = "female")
 
 # Merge Betula dfs into one
-betula_df <- merge(betula_em, betula_df, by = c("id", "timepoint"), all = TRUE) # This keeps all participants so need to drop NAs
+betula_df <- merge(betula_em, betula_df, by = c("id", "timepoint"), all = TRUE)
 ```
 
 Read in Betula ages df 
@@ -520,7 +511,7 @@ oslo_struct <- oslo_struct %>%
     mmse = "MMS"
   )
 
-# Subset oslo_func to only include necessary data
+# Subset oslo_struct to only include necessary data
 columns_to_keep <- c(
   "timepoint",
   "id",
@@ -552,7 +543,7 @@ oslo_struct <- oslo_struct %>%
   group_by(id) %>%
   mutate(edu = first(edu))
 
-# Drop participants with scanner ousPrisma - unclear with they are in this df - and drop participants without MRI
+# Drop participants with scanner ousPrisma and drop participants without MRI
 oslo_struct <- oslo_struct %>%
   filter(!(scanner == "ousPrisma" | scanner == "noMRI"))
 ```
@@ -582,10 +573,9 @@ selected_cols <- c(
   names(oslo_func)[grepl("^(RECN|LECN).*-(RECN|LECN)", names(oslo_func))],
   names(betula_func)[grepl("^(AS).*-(AS)", names(betula_func))]
 )
-
-selected_cols <- unique(selected_cols) # Because some fc connections are in multiple networks
 oslo_func <- oslo_func[, selected_cols]
 
+# Read in scanner df
 oslo_func_scanners <- read_delim("/tsd/p274/data/durable/projects/p027-cr_bm/UiO/results/subs.txt",
   delim = " ", escape_double = FALSE, trim_ws = TRUE, show_col_types = FALSE, col_names = FALSE
 )
@@ -615,23 +605,22 @@ columns_to_keep_scanner <- c(
 oslo_func_scanners <- select(oslo_func_scanners, all_of(columns_to_keep_scanner))
 
 # Merge the functional data
-oslo_func2 <- merge(oslo_func_scanners, oslo_func, by = c("id", "timepoint"), all = TRUE) # This keeps all participants so need to drop NAs
-
+oslo_func2 <- merge(oslo_func_scanners, oslo_func, by = c("id", "timepoint"), all = TRUE)
 
 # Merge Oslo dfs into one
-oslo_df <- merge(oslo_struct, oslo_func2, by = c("id", "timepoint", "scanner"), all = TRUE) # This keeps all participants so need to drop NAs
+oslo_df <- merge(oslo_struct, oslo_func2, by = c("id", "timepoint", "scanner"), all = TRUE)
 ```
 
 Create a variable to consider the multiple MRI scanners and convert to wide format
 ```{r warning=FALSE}
 # Edit the df to remove any timepoints where someone was scanned on a different scanner
 
-# For each person, keep only the scanner with the most timepoints
+# For each person keep only the scanner with the most timepoints
 scanner_keep <- oslo_df %>%
   filter(!is.na(scanner)) %>%
   count(id, scanner, name = "n") %>%
   group_by(id) %>%
-  arrange(desc(n), desc(scanner == "ousSkyra")) %>%  # prioritize ousSkyra
+  arrange(desc(n), desc(scanner == "ousSkyra")) %>% # prioritize ousSkyra 3T
   slice(1) %>%
   ungroup() %>%
   select(id, scanner)
@@ -653,7 +642,6 @@ oslo_df <- wide_format(oslo_df, 6, common_vars)
 
 # Make a df to check that the scanners are being selected correctly
 scanner_cols <- paste0("scanner.", 1:6)
-
 oslo_df_scanners <- select(
   oslo_df,
   id, scanner_cols
@@ -764,7 +752,7 @@ determine_scanner_type <- function(scanners) {
   } else if ("ousSkyra" %in% scanners) {
     return("oslo_skyra")
   } else {
-    return(NA_character_) # Return NA if no scanners
+    return(NA_character_) # Return NA if no scanner
   }
 }
 
@@ -775,7 +763,7 @@ oslo_df <- oslo_df %>%
   ungroup()
 
 # Check that its working
-oslotest <- select(oslo_df, id, study, paste0("scanner.", 1:6))
+oslo_test <- select(oslo_df, id, study, paste0("scanner.", 1:6))
 ```
 
 Now exclude values that are not within 3 SD of the norm for each given variable for each study
@@ -784,7 +772,7 @@ Now exclude values that are not within 3 SD of the norm for each given variable 
 merged_cohorts <- bind_rows(waha_df, cobra_df, betula_df, oslo_df)
 
 # Filter the max baseline age to be 60 years
-merged_cohorts <- merged_cohorts %>% 
+merged_cohorts <- merged_cohorts %>%
   filter(age.1 >= 60)
 
 # Check which columns need to be excluded when removing outliers by removing the FC columns to see the data better
@@ -808,18 +796,17 @@ replace_outliers_with_na <- function(x) {
   return(x)
 }
 
-# Create a new variable for study that does not consider scanner
+# Create a new variable for study
 merged_cohorts <- merged_cohorts %>%
   mutate(cohort = ifelse(study == "oslo_avanto", "Oslo",
     ifelse(study == "oslo_skyra", "Oslo",
       ifelse(study == "betula", "Betula",
         ifelse(study == "waha", "WAHA",
           ifelse(study == "cobra", "Cobra", NA)
-          )
         )
       )
     )
-  )
+  ))
 
 # Applying the function
 cleaned_data <- merged_cohorts %>%
