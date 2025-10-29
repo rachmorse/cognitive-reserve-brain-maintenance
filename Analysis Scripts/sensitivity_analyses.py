@@ -166,7 +166,6 @@ def plot_panel(ax, X, Y, Z, title, label_text, cmap=None):
     contours = ax.contour(X, Y, Z, levels=levels, colors='black', linewidths=0.6, alpha=1)
     ax.clabel(contours, inline=True, fontsize=7, fmt="%.2f")
     ax.axhline(0, color='white', linewidth=1.0, alpha=0.8)
-    ax.axvline(0, color='white', linewidth=1.0, alpha=0.8)
     ax.set_xlabel("Hippocampal Annual Change (age-adjusted)")
     ax.set_ylabel("Memory Annual Change (age-adjusted)")
     ax.set_title(title, fontsize=10)

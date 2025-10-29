@@ -1,21 +1,13 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.colors import LinearSegmentedColormap
-from numpy import arctanh, sqrt
+from numpy import sqrt
 
-# Note that this script should be run using the scaled residuals for age from both memory and hippocampal volume slopes
+# NOTE that this script should be run using the scaled residuals from an age-memory and an age-hippocampal volume regression.
 # So X = scaled hippocampal residuals, Y = scaled memory residuals
+# The scaling used in the paper is to z-score then scale to [-1, 1] after taking the residuals.
 
-# Optionally, uncomment this code for scaling
-# # Z-score normalization
-# X = (X - X.mean()) / X.std()
-# Y = (Y - Y.mean()) / Y.std()
-
-# # Normalize to [-1, 1]
-# X = X / max(abs(X.min(skipna=True)), abs(X.max(skipna=True)))
-# Y = Y / max(abs(Y.min(skipna=True)), abs(Y.max(skipna=True)))
-
-# Then optionally create a test dataset with 800x800 points, range [-1, 1] in both X and Y
+# If you want to run this code on simulated data, optionally create a dataset with 800x800 points, range [-1, 1] 
 x = np.linspace(-1, 1, 800)
 y = np.linspace(-1, 1, 800)
 X, Y = np.meshgrid(x, y) # X and Y are a 2D grid of coordinates (all possible combinations of x and y)
@@ -30,6 +22,7 @@ theta_diag = np.deg2rad(45.0)       # top-right & bottom-left -> diagonal for wh
 theta_perp = np.deg2rad(90.0)       # bottom-right -> perpendicular lines when CR is low
 
 # Step 2. Define k as a constant for how smooth the transitions between quadrants should be 
+# Higher k = sharper transitions, lower k = smoother transitions
 kx, ky = 2, 2
 
 # Step 3. Define wx and wy which determine where each point is on the grid
@@ -37,7 +30,7 @@ kx, ky = 2, 2
 wx = 0.5 * (1 + np.tanh(kx * X))
 wy = 0.5 * (1 + np.tanh(ky * Y))
 
-# Then use these to smoothly blend between the quadrants
+# Then use these to compute a blended orientation angle based on the quadrant
 # Top left = (1-wx)*(wy) ~ 1 at top-left, 0 at bottom-right
 # Top right = (wx)*(wy) ~ 1 at top-right, 0 at bottom-left
 # Bottom left = (1-wx)*(1-wy) ~ 1 at bottom-left, 0 at top-right
@@ -87,27 +80,24 @@ fig, axs = plt.subplots(1, 2, figsize=(11.4, 4.65))
 
 # CR plot
 plt.sca(axs[0])
-plt.xlabel("Hippocampal Annual Change")
-plt.ylabel("Memory Annual Change")
-# Contour lines to show straight bands clearly
+plt.xlabel("Hippocampal Annual Change (age-adjusted)")
+plt.ylabel("Memory Annual Change (age-adjusted)")
 mesh = plt.pcolormesh(X, Y, cognitive_reserve, shading='auto', cmap=cmap_cr)
 levels = np.linspace(0, 1, 15)
 contours = plt.contour(X, Y, cognitive_reserve, levels=levels, colors='black', linewidths=0.6, alpha=1)
 plt.clabel(contours, inline=True, fontsize=7, fmt="%.2f")
 plt.axhline(0, color='white', linewidth=1.0, alpha=0.8)
-plt.axvline(0, color='white', linewidth=1.0, alpha=0.8)
 plt.colorbar(mesh, ax=axs[0], label='Cognitive Reserve')
 
 # BM plot
 plt.sca(axs[1])
-plt.xlabel("Hippocampal Annual Change")
-plt.ylabel("Memory Annual Change")
+plt.xlabel("Hippocampal Annual Change (age-adjusted)")
+plt.ylabel("Memory Annual Change (age-adjusted)")
 mesh = plt.pcolormesh(X, Y, brain_maintenance, shading='auto', cmap=cmap_bm)
 levels = np.linspace(brain_maintenance.min(), brain_maintenance.max(), 15)
 contours = plt.contour(X, Y, brain_maintenance, levels=levels, colors='black', linewidths=0.6, alpha=1)
 plt.clabel(contours, inline=True, fontsize=7, fmt="%.2f")
 plt.axhline(0, color='white', linewidth=1.0, alpha=0.8)
-plt.axvline(0, color='white', linewidth=1.0, alpha=0.8)
 plt.colorbar(mesh, ax=axs[1], label='Brain Maintenance')
 
 plt.tight_layout()
