@@ -87,6 +87,7 @@ levels = np.linspace(0, 1, 15)
 contours = plt.contour(X, Y, cognitive_reserve, levels=levels, colors='black', linewidths=0.6, alpha=1)
 plt.clabel(contours, inline=True, fontsize=7, fmt="%.2f")
 plt.axhline(0, color='white', linewidth=1.0, alpha=0.8)
+plt.axvline(0, color='white', linewidth=1.0, alpha=0.8)
 plt.colorbar(mesh, ax=axs[0], label='Cognitive Reserve')
 
 # BM plot
@@ -98,6 +99,7 @@ levels = np.linspace(brain_maintenance.min(), brain_maintenance.max(), 15)
 contours = plt.contour(X, Y, brain_maintenance, levels=levels, colors='black', linewidths=0.6, alpha=1)
 plt.clabel(contours, inline=True, fontsize=7, fmt="%.2f")
 plt.axhline(0, color='white', linewidth=1.0, alpha=0.8)
+plt.axvline(0, color='white', linewidth=1.0, alpha=0.8)
 plt.colorbar(mesh, ax=axs[1], label='Brain Maintenance')
 
 plt.tight_layout()
