@@ -71,7 +71,7 @@ def compute_BM(X, Y, bm_max, scale='maxabs', alpha_point=0.5, metric='euclid'):
     """Compute the BM value for given X and Y coordinates.
 
     Tests euclidean distance (direct distance), manhattan distance (grid distance), 
-    and chebyshev distance (max axis distance) on -1 to 1 scaled data or z-scored data.
+    and chebyshev distance (max axis distance) on -1 to 1 scaled data and/or z-scored data.
     Also tests different weightings between point distance and line distance (alpha_point).
     When alpha_point=1, only point distance is used; when alpha_point=0, only line distance is used.
 
