@@ -39,15 +39,6 @@ oslo_df <- read.csv("/tsd/p274/data/durable/projects/p027-cr_bm/Clean Data All C
 
 Drop NAs - this assumes that to get a composite memory score they need to have all of the baseline data 
 ```{r}
-drop_na_rows <- function(df, columns) {
-  # Use complete.cases to drop rows with NA values in the specified columns
-  df[complete.cases(df[, columns]), ]
-}
-waha_columns <- c("Verbal_memory_RAVLT_Total_baseline", "Verbal_Memory_RAVLT_delayed_baseline", "Visual_Memory_ROCF_Imm_baseline")
-betula_columns <- c("CuedRecall_sptcrc_baseline", "CuedRecall_vtcrc_baseline", "FreeRecall_sptb_baseline", "FreeRecall_vtb_baseline")
-oslo_columns <- c("CVLT_A_Total_baseline", "CVLT_5min_Free_baseline", "CVLT_30min_Free_baseline")
-cobra_columns <- c("EM_verbal_baseline", "EM_numerical_baseline", "EM_figural_baseline")
-
 # Switch variable to chr
 dfs <- list(waha_df, cobra_df, betula_df, oslo_df)
 cols_to_fix <- c("id", "sex", "study", "cohort")
@@ -114,8 +105,8 @@ slopes <- calculate_slope(merged_cohorts, hip_total_cols, icv_cols)
 # Convert the df to wide format to be able to merge it
 slopes_wide <- slopes %>%
   pivot_wider(
-    names_from = timepoint, values_from = c(-study, -timepoint),
-    names_prefix = "slope.", names_sep = "_"
+    names_from = timepoint, values_from = slope, 
+    names_prefix = "slope."
   )
 
 # Merge the wide slope df into the main df
