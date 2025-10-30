@@ -403,12 +403,6 @@ betula_func <- betula_func %>%
   mutate(id = paste0("betula_", sub("_T[5-7]$", "", id)))
 
 # Subset betula_func to only include necessary data
-selected_cols <- c(
-  "id", "timepoint",
-  names(betula_func)[grepl("^(dDMN|vDMN).*-(vDMN|dDMN)", names(betula_func))],
-  names(betula_func)[grepl("^(RECN|LECN).*-(RECN|LECN)", names(betula_func))],
-  names(betula_func)[grepl("^(AS).*-(AS)", names(betula_func))]
-)
 betula_func <- betula_func[, selected_cols]
 
 # Merge Betula functional and structural dfs and clean
@@ -567,12 +561,6 @@ oslo_func <- oslo_func %>%
   mutate(id = paste0("oslo_", gsub("_[1-7]$", "", id)))
 
 # Subset oslo_func to only include necessary data
-selected_cols <- c(
-  "id", "timepoint",
-  names(oslo_func)[grepl("^(dDMN|vDMN).*-(vDMN|dDMN)", names(oslo_func))],
-  names(oslo_func)[grepl("^(RECN|LECN).*-(RECN|LECN)", names(oslo_func))],
-  names(betula_func)[grepl("^(AS).*-(AS)", names(betula_func))]
-)
 oslo_func <- oslo_func[, selected_cols]
 
 # Read in scanner df
@@ -771,9 +759,9 @@ Now exclude values that are not within 3 SD of the norm for each given variable 
 # Start by making a merged df
 merged_cohorts <- bind_rows(waha_df, cobra_df, betula_df, oslo_df)
 
-# Filter the max baseline age to be 60 years
+# Filter the min age to be 60 years
 merged_cohorts <- merged_cohorts %>%
-  filter(age.1 >= 60)
+  filter(age_baseline >= 60)
 
 # Check which columns need to be excluded when removing outliers by removing the FC columns to see the data better
 filtered_df <- merged_cohorts %>% select(-contains(c("RECN", "DMN", "LECN", "SN")))
