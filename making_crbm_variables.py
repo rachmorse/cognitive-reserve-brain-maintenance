@@ -31,22 +31,24 @@ wx = 0.5 * (1 + np.tanh(kx * X))
 wy = 0.5 * (1 + np.tanh(ky * Y))
 
 # Then use these to compute a blended orientation angle based on the quadrant
-# Top left = (1-wx)*(wy) ~ 1 at top-left, 0 at bottom-right
-# Top right = (wx)*(wy) ~ 1 at top-right, 0 at bottom-left
-# Bottom left = (1-wx)*(1-wy) ~ 1 at bottom-left, 0 at top-right
-# Bottom right = (wx)*(1-wy) ~ 1 at bottom-right, 0 at top-left
+# (1-wx)*(wy) ~ 1 at top-left, 0 at bottom-right
+# (wx)*(wy) ~ 1 at top-right, 0 at bottom-left
+# (1-wx)*(1-wy) ~ 1 at bottom-left, 0 at top-right
+# (wx)*(1-wy) ~ 1 at bottom-right, 0 at top-left
 # Summing all four of these will always equal 1
 
-# Step 4. Define theta(x,y) as a smooth blend of the angles in each quadrant
+# Step 4. Define theta(x,y) 
 theta = (1 - wx)*(wy)*theta_flat + \
         wx*(1 - wy)*theta_perp + \
         ((wx)*(wy) + (1 - wx)*(1 - wy))*theta_diag
 
-# Step 5. Finally compute the cognitive reserve value
+# Step 5. Compute the cognitive reserve value
 cognitive_reserve = np.cos(theta) * Y - np.sin(theta) * X
 
 # Step 6. Normalize 
-bound = 1.0484785942244885 # pre-calculated max / min possible value for this dataset
+# Pre-calculated max / min possible value for this dataset with k and theta defined as above
+# If changing k or theta you will need to recalculate the bound
+bound = 1.0484785942244885 
 cognitive_reserve = (cognitive_reserve + bound) / (2 * bound) 
 
 #######################
