@@ -77,7 +77,7 @@ def plot_cr_moderation(df_raw):
     cmap_cr = LinearSegmentedColormap.from_list("cr_cmap", custom_colors_cr, N=256)
 
     # Split CR into bins
-    n_bins = 70
+    n_bins = 60
     df_raw['CR_bin'] = pd.qcut(df_raw['CR'], q=n_bins, labels=False)
 
     # Prepare lists for storing results
