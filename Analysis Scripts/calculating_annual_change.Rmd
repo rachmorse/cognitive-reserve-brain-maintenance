@@ -441,7 +441,7 @@ print(hc_normality)
 
 Fit residual models to use in creating the CR/BM variable
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
-# Uncomment this code to evaluate and check GAMM assumptions
+# Uncomment this code to evaluate and check GAM assumptions
 
 # # Loop through k values and print results
 # for (k in 1:27) {
@@ -465,6 +465,15 @@ Fit residual models to use in creating the CR/BM variable
 #
 # gam.check(model_mem_gam)
 # gam.check(model_hc_gam)
+# 
+# # Now check that the gam fits better than the linear model 
+# m_lin_hc    <- gam(hc_slopes ~  age_followup,            data = clean_data, method = "ML")
+# m_smooth_hc <- gam(hc_slopes ~ s(age_followup, k = 4),   data = clean_data, method = "ML")
+# anova(m_lin_hc, m_smooth_hc, test = "Chisq")   
+# 
+# m_lin_mem    <- gam(memory_slopes ~  age_followup,            data = clean_data, method = "ML")
+# m_smooth_mem <- gam(memory_slopes ~ s(age_followup, k = 25),   data = clean_data, method = "ML")
+# anova(m_lin_mem, m_smooth_mem, test = "Chisq") 
 ```
 
 ```{r}
