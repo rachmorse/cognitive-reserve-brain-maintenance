@@ -4,6 +4,7 @@ format_scripts.R
 fig 1 code.R
 Fig 1.jpeg
 *.png
+Analysis\ Scripts/sn_figure.py
 
 .DS_Store
 .venv/
