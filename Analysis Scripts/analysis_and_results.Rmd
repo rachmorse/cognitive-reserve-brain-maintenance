@@ -1,10 +1,10 @@
 ---
 title: "Results"
 output:
-  word_document: default
-  pdf_document: default
   html_document:
     df_print: paged
+  pdf_document: default
+  word_document: default
 ---
 
 ```{r setup, include=FALSE}
@@ -650,26 +650,17 @@ edu_cr_int <- get_mixed_effects_stats(scale(memory) ~ scale(edu) * scale(adj_HIP
 
 # Then edu and memory
 edu_mem <- get_mixed_effects_stats(scale(memory) ~ scale(edu) + scale(time) + (1|id) + (1|study) + age + sex, data = long_clean_data, vars)
-edu_mem_time <- get_mixed_effects_stats(scale(memory) ~ scale(edu) * scale(time) + (1|id) + (1|study) + age + sex, data = long_clean_data, int_vars)
 
 # Then is edu related to our CR variable
 cr_pathway <- clean_data %>%
   filter(high_cr == "High CR") 
   
 edu_cr <- get_regression_stats(scale(edu) ~ scale(CR) + study + age_baseline + sex, data = cr_pathway, int_vars)
-
-# Extract the stats from previous model about whether edu explains mem beyond HC
-edu_var <- c(
-  "scale(edu)"
-)
-
-# Running the regression model
-emhp_edu <- get_regression_stats(scale(memory_slopes) ~ scale(hc_slopes) + study + scale(age_baseline) + scale(mem_time) + sex + scale(edu), data = clean_data, edu_var)
 ```
 
 __**Cognitive Reserve, Education, and Functional Connectivity:**__
 
-Longitudinal mixed-effects analyses provided no evidence that education moderated the relationship between hippocampal volume and memory (_p_ = `r format_p_value(edu_cr_int$p_value)`, _p_<sub>FDR</sub> = `r format_p_value(p_value_df[p_value_df$model_name == "edu_cr_int", "adjusted_p_value"])`), nor that there was a significant relationship between our CR variable and education (_p_ = `r format_p_value(edu_cr$p_value)`, _p_<sub>FDR</sub> = `r format_p_value(p_value_df[p_value_df$model_name == "edu_cr", "adjusted_p_value"])`) in high CR participants. Education was significantly correlated with memory (β = `r round(edu_mem$coef, 4)`, 95% CI `r round(edu_mem$ci[1], 4)` to `r round(edu_mem$ci[2], 4)`, _p_ = `r format(format_p_value(edu_mem$p_value), scientific = FALSE)`, _p_<sub>FDR</sub> = `r format_p_value(p_value_df[p_value_df$model_name == "edu_mem", "adjusted_p_value"])`, marginal r² = `r round(edu_mem$marginal_r2, 4)`, conditional r² = `r round(edu_mem$conditional_r2, 4)`); however, there was only limited evidence of its association with memory change, which did not survive correction for multiple comparisons (_p_ = `r format(format_p_value(edu_mem_time$p_value), scientific = FALSE)`, _p_<sub>FDR</sub> = `r format_p_value(p_value_df[p_value_df$model_name == "edu_mem_time", "adjusted_p_value"])`). Moreover, in the hippocampal-memory annual change model, we observed that education did not provide additional variance beyond that accounted for by hippocampal change (_p_ = `r format(format_p_value(emhp_edu$p_value), scientific = FALSE)`, _p_<sub>FDR</sub> = `r format_p_value(p_value_df[p_value_df$model_name == "emhp_edu", "adjusted_p_value"])`). 
+Longitudinal mixed-effects analyses provided no evidence that education moderated the relationship between hippocampal volume and memory (_p_ = `r format_p_value(edu_cr_int$p_value)`, _p_<sub>FDR</sub> = `r format_p_value(p_value_df[p_value_df$model_name == "edu_cr_int", "adjusted_p_value"])`), nor that there was a significant relationship between our CR variable and education (_p_ = `r format_p_value(edu_cr$p_value)`, _p_<sub>FDR</sub> = `r format_p_value(p_value_df[p_value_df$model_name == "edu_cr", "adjusted_p_value"])`) in high CR participants. However, education was significantly correlated with memory (β = `r round(edu_mem$coef, 4)`, 95% CI `r round(edu_mem$ci[1], 4)` to `r round(edu_mem$ci[2], 4)`, _p_ = `r format(format_p_value(edu_mem$p_value), scientific = FALSE)`, _p_<sub>FDR</sub> = `r format_p_value(p_value_df[p_value_df$model_name == "edu_mem", "adjusted_p_value"])`, marginal r² = `r round(edu_mem$marginal_r2, 4)`, conditional r² = `r round(edu_mem$conditional_r2, 4)`; Table 5). 
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 # Set the priority variables
@@ -755,7 +746,25 @@ long_fc <- data.frame(
     "", "", "**Memory**", 
     "", "", "**Cognitive Reserve**"
   ),
-  "**DMN Connectivity * Hippocampal Volume**" = c(
+  "**Education * Adjusted Hippocampal Volume**" = c(
+    "_Coefficient (95% CI)_",
+    paste0(round(edu_cr_int$coef, 4), " (", round(edu_cr_int$ci[1], 4), " to ", round(edu_cr_int$ci[2], 4), ")"),
+    "**Education**", "_Coefficient (95% CI)_",
+    paste0(round(edu_mem$coef, 4), " (", round(edu_mem$ci[1], 4), " to ", round(edu_mem$ci[2], 4), ")"),
+    "**Education**", "_Coefficient (95% CI)_",
+    paste0(round(edu_cr$coef, 4), " (", round(edu_cr$ci[1], 4), " to ", round(edu_cr$ci[2], 4), ")")
+  ),
+  " " = c(
+    "_Adjusted p-value_", format_p_value(p_value_df[p_value_df$model_name == "edu_cr_int", "adjusted_p_value"]),
+    "", "_Adjusted p-value_", format_p_value(p_value_df[p_value_df$model_name == "edu_mem", "adjusted_p_value"]),
+    "", "_Adjusted p-value_", format_p_value(p_value_df[p_value_df$model_name == "edu_cr", "adjusted_p_value"])
+    ),
+  " " = c(
+    "_Marginal R²_", round(edu_cr_int$marginal_r2, 4),
+    "", "_Marginal R²_", round(edu_mem$marginal_r2, 4),
+    "", "_Adjusted R²_", round(edu_cr$adj_r2, 4)
+  ),
+  "**DMN Connectivity * Adjusted Hippocampal Volume**" = c(
     "_Coefficient (95% CI)_",
     paste0(round(cr_dmn_stats$coef, 4), " (", round(cr_dmn_stats$ci[1], 4), " to ", round(cr_dmn_stats$ci[2], 4), ")"),
     "**DMN Connectivity**", "_Coefficient (95% CI)_",
@@ -773,13 +782,13 @@ long_fc <- data.frame(
     "", "_Marginal R²_", round(cr_dmn_mem$marginal_r2, 4),
     "", "_Marginal R²_", round(cr_dmn$marginal_r2, 4)
   ),
-  "**ECN Connectivity * Hippocampal Volume**" = c(
+  "**ECN Connectivity * Adjusted Hippocampal Volume**" = c(
     "_Coefficient (95% CI)_",
     paste0(round(cr_ecn_stats$coef, 4), " (", round(cr_ecn_stats$ci[1], 4), " to ", round(cr_ecn_stats$ci[2], 4), ")"),
     "**ECN Connectivity**", "_Coefficient (95% CI)_",
     paste0(round(cr_ec_mem$coef, 4), " (", round(cr_ec_mem$ci[1], 4), " to ", round(cr_ec_mem$ci[2], 4), ")"),
     "**ECN Connectivity**", "_Coefficient (95% CI)_",
-    paste0(round(cr_ec$coef, 4), " (", format(round(cr_ec$ci[1], 4), scientific = FALSE), " to ", round(cr_ec$ci[2], 4), ")")
+    paste0(round(cr_ec$coef, 4), " (", round(cr_ec$ci[1], 4), " to ", round(cr_ec$ci[2], 4), ")")
   ),
   " " = c(
     "_Adjusted p-value_", format_p_value(p_value_df[p_value_df$model_name == "cr_ecn_stats", "adjusted_p_value"]),
@@ -791,13 +800,13 @@ long_fc <- data.frame(
     "", "_Marginal R²_", round(cr_ec_mem$marginal_r2, 4),
     "", "_Marginal R²_", round(cr_ec$marginal_r2, 4)
   ),
-  "**Anterior SN Connectivity * Hippocampal Volume**" = c(
+  "**Anterior SN Connectivity * Adjusted Hippocampal Volume**" = c(
     "_Coefficient (95% CI)_",
     paste0(round(cr_sn_stats$coef, 4), " (", round(cr_sn_stats$ci[1], 4), " to ", round(cr_sn_stats$ci[2], 4), ")"),
     "**Anterior SN Connectivity**", "_Coefficient (95% CI)_",
     paste0(round(cr_sn_mem$coef, 4), " (", round(cr_sn_mem$ci[1], 4), " to ", round(cr_sn_mem$ci[2], 4), ")"),
     "**Anterior SN Connectivity**", "_Coefficient (95% CI)_",
-    paste0(round(cr_sn$coef, 4), " (", format(round(cr_sn$ci[1], 4), scientific = FALSE), " to ", round(cr_sn$ci[2], 4), ")")
+    paste0(round(cr_sn$coef, 4), " (", round(cr_sn$ci[1], 4), " to ", round(cr_sn$ci[2], 4), ")")
   ),
   " " = c(
     "_Adjusted p-value_", format_p_value(p_value_df[p_value_df$model_name == "cr_sn_stats", "adjusted_p_value"]),
@@ -812,10 +821,10 @@ long_fc <- data.frame(
 )
 ```
 
-__Table 5__: _Models Examining Functional Connectivity and Cognitive Reserve_
+__Table 5__: _Models Examining Education, Functional Connectivity and Cognitive Reserve_
 ```{r tab5, echo=FALSE} 
 # Format and print the table
-kable(long_fc, format = "markdown", col.names = c(" ", "**DMN Connectivity * Hippocampal Volume**", " ", " ", "**ECN Connectivity * Hippocampal Volume**", " ", " ", "**Anterior SN Connectivity * Hippocampal Volume**", " ", " "))
+kable(long_fc, format = "markdown", col.names = c(" ", "**Education * Adjusted Hippocampal Volume**", " ", " ", "**DMN Connectivity * Adjusted Hippocampal Volume**", " ", " ", "**ECN Connectivity * Adjusted Hippocampal Volume**", " ", " ", "**Anterior SN Connectivity * Adjusted Hippocampal Volume**", " ", " "))
 ```
 
 Note. Abbreviations: DMN Default Mode Network, ECN Executive Control Network, SN Salience Network, CI Confidence Interval.
@@ -1191,7 +1200,7 @@ cohort_comp <- list(
 memory_hippocampus_edu_models <- list(emhp_merged, model_baseline, model_followup)
 
 # Education and CR/BM Analyses
-education_cr_models <- list(edu_cr, edu_cr_int, edu_mem, edu_mem_time, emhp_edu)
+education_cr_models <- list(edu_cr, edu_cr_int, edu_mem)
 
 # CR and BM Sensitivity Analyses
 cr_sensitivity_models <- list(crbm_corr)
@@ -1255,7 +1264,7 @@ memory_hippocampus_p_values <- adjust_p_values(
 )
 education_cr_p_values <- adjust_p_values(
   education_cr_models,
-  c("edu_cr", "edu_cr_int", "edu_mem", "edu_mem_time", "emhp_edu")
+  c("edu_cr", "edu_cr_int", "edu_mem")
 )
 cr_sensitivity_p_values <- adjust_p_values(
   cr_sensitivity_models,
