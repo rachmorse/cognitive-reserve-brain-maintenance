@@ -1,5 +1,7 @@
 fisher_z_transformation.R
 format_scripts.R
+data_cleaning.Rmd
+calculating_annual_change.Rmd
 *.png
 Analysis\ Scripts/sn_figure.py
 .DS_Store
