@@ -139,6 +139,7 @@ def plot_cr_moderation(df_raw):
     ax.add_collection(lc_out)   
     ax.add_collection(lc_in)   
     ax.autoscale()
+    ax.set_ylim(-4.0, 1.5)
     ax.set_xlabel("Hippocampal Annual Change (age-adjusted)")
     ax.set_ylabel("Memory Annual Change (age-adjusted)")
     cb = plt.colorbar(lc_in, ax=ax, label='Cognitive Reserve')

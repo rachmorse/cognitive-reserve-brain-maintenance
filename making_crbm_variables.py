@@ -51,6 +51,7 @@ def create_cr_measure(X, Y):
     # cognitive reserve value, rather than the observed max in your data
     bound = 1.0484785942244885
 
+    # This formula assumes symmetric bounds
     return (cognitive_reserve + bound) / (2 * bound)
 
 
