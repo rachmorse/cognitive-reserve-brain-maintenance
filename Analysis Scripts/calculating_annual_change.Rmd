@@ -306,6 +306,33 @@ for (i in 1:6) {
 }
 ```
 
+Remove anyone outside of 3SD for these new variables by cohrot
+
+```{r}
+# Define columns
+vars_to_clean <- c(
+  "memory_slopes",
+  "hc_slopes",
+  paste0("dmn.", 1:6),
+  paste0("ec.", 1:6),
+  paste0("sn.", 1:6)
+)
+
+# Define a function to replace values outside 3 SD with NA
+replace_outliers_with_na <- function(x, k = 3){
+  mean <- mean(x, na.rm = TRUE)
+  sd <- sd(x, na.rm = TRUE)
+  x[abs(x - mean) > k * sd] <- NA
+  x
+}
+
+# Applying the function
+merged_cohorts <- merged_cohorts %>%
+  group_by(cohort) %>%                     # compute 3SD within each cohort
+  mutate(across(all_of(vars_to_clean), ~ replace_outliers_with_na(.x, k = 3))) %>%
+  ungroup()
+```
+
 Now create functional connectivity obs and time variables
 ```{r}
 compute_fc_stats <- function(data) {
@@ -398,6 +425,10 @@ create_bl_fu_columns <- function(data) {
     }
   }
 
+  # Make sure all variables are numeric
+  data <- data %>%
+    mutate(across(ends_with("_baseline") | ends_with("_followup"),
+                ~ as.numeric(.)))
   return(data)
 }
 
@@ -440,54 +471,6 @@ print(hc_normality)
 ```
 
 Fit residual models to use in creating the CR/BM variable
-```{r echo=FALSE, message=FALSE, warning=FALSE}
-# Uncomment this code to evaluate and check GAM assumptions
-
-# # Loop through k values and check results for mem
-# out_mem <- data.frame(k = integer(), AIC = double(), BIC = double(), edf = double())
-# for (kk in 1:27) {
-#   k_use <- kk + 3
-#   model_mem_gam <- gam(memory_slopes ~ s(age_followup, k = k_use),
-#                       data = clean_data)
-#   edf_val <- as.numeric(summary(model_mem_gam)$s.table[,"edf"][1])
-#   out_mem <- rbind(out_mem, data.frame(k = k_use,
-#                                AIC = AIC(model_mem_gam),
-#                                BIC = BIC(model_mem_gam),
-#                                edf = edf_val))
-# }
-# 
-# # Loop through k values and check results for hc
-# out_hc <- data.frame(k = integer(), AIC = double(), BIC = double(), edf = double())
-# for (kk in 1:27) {
-#   k_use <- kk + 3
-#   model_hc_gam <- gam(hc_slopes ~ s(age_followup, k = k_use),
-#                       data = clean_data)
-#   edf_val <- as.numeric(summary(model_hc_gam)$s.table[,"edf"][1])
-#   out_hc <- rbind(out_hc, data.frame(k = k_use,
-#                                AIC = AIC(model_hc_gam),
-#                                BIC = BIC(model_hc_gam),
-#                                edf = edf_val))
-# }
-
-# Check the HC model summaries and comparisons
-m_lin_hc <- gam(hc_slopes ~ age_followup, data = clean_data)
-m_smooth_hc <- gam(hc_slopes ~ s(age_followup, k = 3), data = clean_data)
-gam.check(m_smooth_hc)
-
-anova(m_lin_hc, m_smooth_hc, test = "Chisq")
-
-# Check the mem models
-m_lin_mem <- gam(memory_slopes ~ age_followup, data = clean_data)
-m_smooth_mem <- gam(memory_slopes ~ s(age_followup, k = 12), data = clean_data)
-gam.check(m_smooth_mem)
-
-anova(m_lin_mem, m_smooth_mem, test = "Chisq")
-
-# Compare the two models
-cor(resid(m_lin_mem), resid(m_smooth_mem))
-cor(resid(m_lin_hc), resid(m_smooth_hc))
-```
-
 ```{r}
 # In order to be able to save these models, the NAs need to be removed
 
@@ -496,7 +479,7 @@ mem_res_data <- clean_data %>%
   drop_na(memory_slopes) %>%
   mutate(
     res_mem_slopes_age = residuals(
-      gam(memory_slopes ~ s(age_followup, k = 12), data = .)
+      lm(memory_slopes ~ age_baseline, data = .)
     )
   ) %>%
   select(id, res_mem_slopes_age)
@@ -506,7 +489,7 @@ hc_res_data <- clean_data %>%
   drop_na(hc_slopes) %>%
   mutate(
     res_hc_slopes_age = residuals(
-      gam(hc_slopes ~ s(age_followup, k = 3), data = .)
+      lm(hc_slopes ~ age_baseline, data = .)
     )
   ) %>%
   select(id, res_hc_slopes_age)
