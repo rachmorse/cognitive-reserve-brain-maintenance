@@ -77,7 +77,7 @@ def plot_cr_moderation(df_raw):
     cmap_cr = LinearSegmentedColormap.from_list("cr_cmap", custom_colors_cr, N=256)
 
     # Split CR into bins
-    n_bins = 60
+    n_bins = 95
     df_raw['CR_bin'] = pd.qcut(df_raw['CR'], q=n_bins, labels=False)
 
     # Prepare lists for storing results
@@ -139,7 +139,7 @@ def plot_cr_moderation(df_raw):
     ax.add_collection(lc_out)   
     ax.add_collection(lc_in)   
     ax.autoscale()
-    ax.set_ylim(-4.0, 1.5)
+    ax.set_ylim(-5, 1.5)  
     ax.set_xlabel("Hippocampal Annual Change (age-adjusted)")
     ax.set_ylabel("Memory Annual Change (age-adjusted)")
     cb = plt.colorbar(lc_in, ax=ax, label='Cognitive Reserve')
@@ -164,7 +164,7 @@ def main():
     # Z-score normalization
     X_zscore = (X_res - X_res.mean()) / X_res.std()
     Y_zscore = (Y_res - Y_res.mean()) / Y_res.std()
-
+    
     # Normalize to [-1, 1]
     X_norm = X_zscore / max(abs(X_zscore.min(skipna=True)), abs(X_zscore.max(skipna=True)))
     Y_norm = Y_zscore / max(abs(Y_zscore.min(skipna=True)), abs(Y_zscore.max(skipna=True)))
