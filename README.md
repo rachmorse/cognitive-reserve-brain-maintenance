@@ -12,12 +12,16 @@ This repository contains the analysis scripts for our study on Cognitive Reserve
 
 This section includes several scripts used to conduct this study:
 
-- `data_cleaning.Rmd`: Cleans and merges data from the Lifebrain cohorts, removes outliers.
-- `calculating_annual_change.Rmd`: Calculates adjusted hippocampal volume, average functional connectivity, and annual change variables. Also, takes the residuals of GAMs with hippocampal and memory change and age. 
+- `data_cleaning.Rmd`: Cleans and merges data from the Lifebrain cohorts.
+- `calculating_annual_change.Rmd`: Calculates adjusted hippocampal volume, average functional connectivity, and annual change variables. Also, takes the residuals of age regressed on hippocampal and memory change. 
 - `crbm_measures.py`: Creates the CR and BM measures and visualizes the CR moderation effect. 
 - `analysis_and_results.Rmd`: Contains primary and supplementary analyses from the study.
-- `sensitivity_analyses.py`: Generates CR and BM measure variations (options: for BM change scaling method, distance calculation method, distance weighting, from theoretical to empirial method; for CR change k, θ). Compares the variations to original measures and plots each variation.
+- `sensitivity_analyses.py`: Generates CR and BM measure variations. Compares the variations to original measures and plots each variation.
 
 ## Usage
 
 This repository provides details on the analyses for transparency. The dataset used is not included. For access - with appropriate ethical approval - you can request the data from each Lifebrain study’s primary investigator ([more information here](https://www.lifebrain.uio.no/about/lifebrain-researchers/)).
+
+## License
+
+The code is available under the [MIT License](https://opensource.org/licenses/MIT), allowing others to reuse and adapt it with appropriate credit.
