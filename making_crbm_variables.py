@@ -2,7 +2,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.colors import LinearSegmentedColormap
 
-# NOTE that this script should be run using the scaled residuals from an age-cognition and an age-brain change regression.
+# NOTE that this script should be run using the scaled residuals from an age-cognition change and an age-brain change regression.
+# These residuals allow CR and BM to be adjusted for age and to account for the steeper brain and cognitive change slopes observed in older age.
 # So, for example, in the paper we use X = scaled hippocampus change residuals, Y = scaled episodic memory change residuals
 # The scaling in the paper uses z-scoring then scaling to [-1, 1] after taking the residuals.
 
